@@ -39,6 +39,7 @@ CYCLE_FRAMES = 250  # Über diese Framespanne läuft die (endlos fortgesetzte) A
 GEAR_MODULE = 0.45  # Fester Modulwert für alle Zahnräder – garantiert perfektes Ineinandergreifen!
 COLLECTION_NAME = "Messingzahnraeder"
 MATERIAL_NAME = "Messing"
+STEEL_MATERIAL_NAME = "Stahl_Zahnraeder"
 AXIS_MATERIAL_NAME = "Transparente_Hohlachse"
 
 # --- Echte Evolventenverzahnung (statt grobem Trapez-Platzhalter) ---
@@ -270,6 +271,26 @@ def get_or_create_brass_material():
     return mat
 
 
+def get_or_create_steel_material():
+    """Stahlgraues Material für die Zahnräder des Getriebes (wie auf dem
+    Originalfoto - die eigentlichen Räder sind Stahl/Gusseisen, nicht golden;
+    golden bleiben nur die sichtbaren Zifferblatt-Elemente wie Zeiger und
+    Sternscheiben-Zierrat)."""
+    if STEEL_MATERIAL_NAME in bpy.data.materials:
+        return bpy.data.materials[STEEL_MATERIAL_NAME]
+
+    mat = bpy.data.materials.new(STEEL_MATERIAL_NAME)
+    mat.use_nodes = True
+    bsdf = mat.node_tree.nodes.get("Principled BSDF")
+    if bsdf is not None:
+        bsdf.inputs["Base Color"].default_value = (0.42, 0.43, 0.45, 1.0)  # stahlgrau
+        bsdf.inputs["Metallic"].default_value = 1.0
+        bsdf.inputs["Roughness"].default_value = 0.45  # etwas matter als poliertes Messing
+        if "Specular IOR Level" in bsdf.inputs:
+            bsdf.inputs["Specular IOR Level"].default_value = 0.5
+    return mat
+
+
 def get_or_create_moon_material():
     """Schwarz lackiertes Material für die verborgene Hälfte der Mondphasenkugel
     - glänzender Lack, kein Metallic, im Kontrast zur goldfarben polierten
@@ -343,7 +364,16 @@ def get_or_create_figure_material(image_filename):
     material_name = f"Tierkreiszeichen_{os.path.splitext(image_filename)[0]}"
     mat = bpy.data.materials.new(material_name)
     mat.use_nodes = True
-    mat.blend_method = 'BLEND'  # Transparenz des Bildrands sichtbar machen
+    # WICHTIG: 'CLIP' statt 'BLEND' - BLEND-Transparenz wird in Eevee pro Objekt
+    # sortiert (nicht pro Pixel) und kann dadurch, je nach Blickwinkel/Position
+    # relativ zu anderen halbtransparenten Flaechen (z.B. der Sternscheibe
+    # dahinter), als dunkles/schwarzes Rechteck aufblitzen, bis die Sortierung
+    # "aufgeloest" ist (z.B. wenn die Figur weit genug im Vordergrund ist).
+    # Da unsere PNGs ohnehin harte Kanten haben (voll deckend oder komplett
+    # transparent, keine weichen Verlaeufe), behebt CLIP das Problem sauber:
+    # es schreibt pixelgenau in den Tiefenpuffer, keine Sortierprobleme mehr.
+    mat.blend_method = 'CLIP'
+    mat.alpha_threshold = 0.5
     mat.show_transparent_back = False
     nodes = mat.node_tree.nodes
     links = mat.node_tree.links
@@ -1334,6 +1364,11 @@ def build_zodiac_figure_object(entry, collection, fps, parent_obj, parent_dir, p
     angle = math.radians(angle_deg)
     correction_deg = float(entry.get("model_rotation_correction_deg", 0.0))
     height = float(entry.get("height", 4.5))
+    # Freier Feinversatz (in denselben Welt-Einheiten wie orbit_radius) - wird
+    # NACH der Kreisformel addiert, damit man eine Figur bei Bedarf einfach
+    # "nachschieben" kann, ohne angle_deg/orbit_radius neu ausrechnen zu muessen.
+    x_offset = float(entry.get("x_offset", 0.0))
+    y_offset = float(entry.get("y_offset", 0.0))
     image_filename = entry["image"]
 
     material, aspect_ratio = get_or_create_figure_material(image_filename)
@@ -1361,7 +1396,8 @@ def build_zodiac_figure_object(entry, collection, fps, parent_obj, parent_dir, p
     # Position IM LOKALEN Koordinatensystem der Sternscheibe (nicht *SCALE,
     # da die Scheibe selbst schon in "finalen" Welt-Einheiten gebaut ist -
     # dieselbe Konvention wie bei der Mondzeiger-Kapsel).
-    obj.location = (orbit_radius * math.cos(angle), orbit_radius * math.sin(angle), 0.05)
+    obj.location = (orbit_radius * math.cos(angle) + x_offset,
+                    orbit_radius * math.sin(angle) + y_offset, 0.05)
     obj.rotation_euler = (0.0, 0.0, 0.0)
 
     mesh.materials.append(material)
@@ -1597,6 +1633,7 @@ def main():
     clear_collection(collection)
 
     brass_material = get_or_create_brass_material()
+    steel_material = get_or_create_steel_material()
     transparent_material = get_or_create_transparent_material()
     dial_material = get_or_create_dial_material()
     moon_material = get_or_create_moon_material()
@@ -1609,7 +1646,7 @@ def main():
     for entry in gear_data:
         etype = entry.get("type", "gear")
         if etype == "gear":
-            obj = build_gear_object(entry, collection, brass_material, fps)
+            obj = build_gear_object(entry, collection, steel_material, fps)
             created.append(obj)
         elif etype == "axis":
             obj = build_axis_object(entry, collection, brass_material, transparent_material)
