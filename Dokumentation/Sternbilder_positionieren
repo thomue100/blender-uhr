@@ -1,0 +1,38 @@
+Alle Stellschrauben pro Figur (in GEAR_DATA) python
+
+{"type": "zodiac_figure", "id": "stier", "parent_id": "sternscheibe",
+ "angle_deg": 27.69,        # Grobe Position auf der Scheibe (0-360°, wie ein Uhrzeiger)
+ "orbit_radius": 11.5,      # Abstand vom Scheibenzentrum
+ "x_offset": 0.0,           # NEU: Feinversatz in X (Welt-Einheiten), nach der Kreisformel addiert
+ "y_offset": 0.0,           # NEU: Feinversatz in Y
+ "height": 4.5,             # Größe (Breite skaliert automatisch mit dem Bild-Seitenverhältnis mit)
+ "model_rotation_correction_deg": 0.0,  # Drehung des Bildes selbst, um die eigene Achse
+ "image": "stier.png"},
+
+Verschieben: angle_deg/orbit_radius für die grobe Position auf der Kreisbahn,
+ x_offset/y_offset (neu ergänzt) für den Feinschliff danach – damit müssen
+Sie nicht jedes Mal die Winkel-/Radius-Mathematik neu ausrechnen, sondern
+können einfach direkt "nachschieben".
+Drehen: model_rotation_correction_deg dreht nur das Bild selbst (statisch,
+wird in die Geometrie gebacken) – die Gegenrotations-Animation, die die
+Figur aufrecht hält, bleibt davon unberührt.
+Vergrößern: height skaliert die ganze Figur proportional (Breite folgt
+automatisch dem Bild-Seitenverhältnis, keine Verzerrung).
+Praktischer Workflow zum genauen Anpassen
+Setzen Sie testweise STAR_DISC_SPEED = 0 (oder die speed im star_disc-Eintrag),
+damit sich die Sternscheibe beim Testen nicht dreht – so sehen Sie die
+Figuren in Ruhe genau dort, wo sie stehen.
+Skript in Blender ausführen, im Viewport auf Draufsicht (Numpad 7) wechseln,
+damit Sie das Zifferblatt genau von oben sehen – am besten mit Material
+Preview oder Rendered Shading, damit die Sternhimmel-Textur mit den
+gepunkteten Kreisen sichtbar ist.
+Für jede Figur: Werte in GEAR_DATA anpassen, Skript neu laufen lassen,
+vergleichen. Das ist iterativ, aber die einzelnen Werte sind jetzt unabhängig voneinander einstellbar.
+Wichtiger Hinweis: Falls Sie eine Figur versuchsweise direkt im
+Blender-Viewport mit der Maus verschieben/drehen (G/R/S), geht das beim
+nächsten Skriptlauf wieder verloren, da das Skript die Szene komplett neu
+aufbaut. Für dauerhafte Änderungen müssen die Werte in GEAR_DATA stehen –
+Sie können aber die im Viewport gefundene Position ablesen (N-Panel →
+Transform → Location X/Y) und daraus angle_deg = atan2(Y,X) bzw.
+orbit_radius = sqrt(X²+Y²) zurückrechnen, oder einfach direkt X/Y in die
+neuen x_offset/y_offset-Felder übernehmen.
