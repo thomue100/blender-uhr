@@ -40,6 +40,7 @@ GEAR_MODULE = 0.45  # Fester Modulwert für alle Zahnräder – garantiert perfe
 COLLECTION_NAME = "Messingzahnraeder"
 MATERIAL_NAME = "Messing"
 STEEL_MATERIAL_NAME = "Stahl_Zahnraeder"
+AXLE_STEEL_MATERIAL_NAME = "Stahl_Achsen"
 AXIS_MATERIAL_NAME = "Transparente_Hohlachse"
 
 # --- Echte Evolventenverzahnung (statt grobem Trapez-Platzhalter) ---
@@ -61,13 +62,13 @@ DIAL_MATERIAL_NAME = "Zifferblatt_Material"
 # Drehrichtung/-geschwindigkeit der Hohlwelle, auf der Rad 6 (+ Rad 5) sitzen.
 # Der Sonnenzeiger wird bewusst über dieselben Konstanten angetrieben, damit er
 # IMMER exakt synchron zu dieser Achse läuft, auch wenn die Werte später geändert werden.
-SHAFT_56_DIR = 1
+SHAFT_56_DIR = -1
 SHAFT_56_SPEED = 1
 
 # Drehrichtung/-geschwindigkeit der (eigenen, massiven) Welle von Rad 10 - der
 # Mondzeiger wird bewusst über dieselben Konstanten angetrieben, damit er IMMER
 # exakt synchron zu diesem (hintersten) Rad läuft.
-SHAFT_10_DIR = 1
+SHAFT_10_DIR = -1
 # WICHTIG: bewusst ungleich SHAFT_56_SPEED gewählt. Die Mondphase entsteht aus der
 # DIFFERENZ zwischen der Mondzeiger-Wellendrehzahl (hier) und der Sonnenzeiger-
 # Wellendrehzahl (SHAFT_56_SPEED) - sind beide gleich, gäbe es keine sichtbare
@@ -89,7 +90,7 @@ MOON_GEAR_TEETH = 24  # historisch: an der Stralsunder Nikolaikirche je 24 Zähn
 # Tierkreis-Figuren darauf sind NICHT starr mit ihr verbunden, sondern per
 # Gegengewicht drehbar gelagert, sodass sie durch die Schwerkraft immer
 # aufrecht bleiben (siehe build_zodiac_figure_object fuer die Umsetzung).
-STAR_DISC_DIR = 1
+STAR_DISC_DIR = -1
 STAR_DISC_SPEED = 0.3  # deutlich langsamer als die "aktiven" Zeiger, gut sichtbar
 STAR_DISC_MATERIAL_NAME = "Sternscheibe_Blau"
 
@@ -119,8 +120,8 @@ GEAR_DATA = [
     {"type": "gear", "group": None, "x": 0, "y": 0, "z": 3, "dir": SHAFT_56_DIR, "speed": SHAFT_56_SPEED, "axis": "z",
      "id": 5, "teeth": 80, "thickness": 0.25, "spoked": True},
     # Rad 2: eigene (weitere/äußere) Hohlwelle, umhüllt die Hohlwelle von 6/5.
-    {"type": "gear", "group": None, "x": 0, "y": 0, "z": 4, "dir": 1, "speed": 1, "axis": "z", "id": 2, "teeth": 80,
-     "thickness": 0.25, "spoked": True},
+    {"type": "gear", "group": None, "x": 0, "y": 0, "z": 4, "dir": SHAFT_56_DIR, "speed": SHAFT_56_SPEED, "axis": "z",
+     "id": 2, "teeth": 80, "thickness": 0.25, "spoked": True},
 
     # --- Parallelwelle A: 9 (kämmt mit 10) + 8 (gemeinsame Welle mit 9, kämmt mit 7) ---
     # y-Abstand = (r_pitch(16) + r_pitch(64)) / SCALE = (3.6 + 14.4) / 4 = 4.5
@@ -131,10 +132,10 @@ GEAR_DATA = [
 
     # --- Parallelwelle B: 4 (kämmt mit 5) + 3 (gemeinsame Welle mit 4, kämmt mit 2) ---
     # y-Abstand = (r_pitch(16) + r_pitch(80)) / SCALE = (3.6 + 18.0) / 4 = 5.4
-    {"type": "gear", "group": None, "x": 0, "y": -5.4, "z": 3, "dir": -1, "speed": 5, "axis": "z", "id": 4, "teeth": 16,
-     "thickness": 0.25},
-    {"type": "gear", "group": None, "x": 0, "y": -5.4, "z": 4, "dir": -1, "speed": 5, "axis": "z", "id": 3, "teeth": 16,
-     "thickness": 0.25},
+    {"type": "gear", "group": None, "x": 0, "y": -5.4, "z": 3, "dir": -SHAFT_56_DIR, "speed": SHAFT_56_SPEED * 5,
+     "axis": "z", "id": 4, "teeth": 16, "thickness": 0.25},
+    {"type": "gear", "group": None, "x": 0, "y": -5.4, "z": 4, "dir": -SHAFT_56_DIR, "speed": SHAFT_56_SPEED * 5,
+     "axis": "z", "id": 3, "teeth": 16, "thickness": 0.25},
 
     # --- Sichtbare (teil-transparente) Hohlwellen-Objekte fuer den zentralen Turm ---
     # Innerste, massive Welle von Rad 10.
@@ -142,6 +143,13 @@ GEAR_DATA = [
     # Hohlwelle, die die Welle von Rad 10 umhuellt; traegt Rad 6 + 5.
     {"type": "axis", "x": 0, "y": 0, "z": -0.4, "length": 4.8, "r": 0.35, "wall_thickness": 0.15, "hollow": True,
      "id": "56"},
+
+    # Kleines Abtriebs-/Antriebs-Zahnrad (15 Zaehne) auf der 56-Welle (dieselbe
+    # Welle wie Rad 5+6) - sitzt am hinteren Ende dieser Welle, "nach hinten
+    # raus" (gegenueber vom Zifferblatt), ein Stueck hinter Rad 10 (dem
+    # hintersten Hauptrad). Bleibt massiv (kein "spoked"), da klein.
+    {"type": "gear", "group": None, "x": 0, "y": 0, "z": -0.3, "dir": SHAFT_56_DIR, "speed": SHAFT_56_SPEED,
+     "axis": "z", "id": "abtrieb56", "teeth": 15, "thickness": 0.25},
     # Aeussere Hohlwelle darueber, umhuellt die Welle von 6/5; traegt Rad 2.
     {"type": "axis", "x": 0, "y": 0, "z": -0.4, "length": 4.8, "r": 0.60, "wall_thickness": 0.20, "hollow": True,
      "id": "2"},
@@ -153,7 +161,7 @@ GEAR_DATA = [
     # SHAFT_56_DIR/SPEED angetrieben - exakt dieselbe Achse wie Rad 6 (+5).
     {"type": "hand", "id": "sonnenzeiger", "x": 0, "y": 0, "z": 4.5, "axis": "z",
      "dir": SHAFT_56_DIR, "speed": SHAFT_56_SPEED,
-     "length": 17.0, "sun_radius": 1.1, "rays": 12, "thickness": 0.4},
+     "length": 15.35, "sun_radius": 1.1, "rays": 24, "thickness": 0.4},
 
     # Mondzeiger: duennes Rohr + zweifarbige (halb gold/halb schwarz) Kugel in
     # schwarzer Metall-Halbkugelfassung. Angetrieben von der eigenen Welle von
@@ -169,17 +177,17 @@ GEAR_DATA = [
     # Zifferblatt zugewandt, z=3..4) - nur die Achse selbst, keine Platine/
     # Strebe/Bodenplatte.
     {"type": "axis", "id": "3_4", "x": 0, "y": -5.4, "z": 2.9, "length": 1.5,
-     "r": 0.075, "hollow": False},
+     "r": 0.075, "hollow": False, "steel": True},
 
     # Sichtbare gemeinsame Achse fuer Radpaar 8+9 ("hintere Gruppe", z=0..1).
     {"type": "axis", "id": "8_9", "x": 0, "y": -4.5, "z": -0.1, "length": 1.5,
-     "r": 0.075, "hollow": False},
+     "r": 0.075, "hollow": False, "steel": True},
 
     # --- Sternscheibe: sitzt knapp unter dem Zifferblatt (zwischen Zifferblatt
     # und den Haupt-Zahnraedern), Radius etwas kleiner als das Zifferblatt,
     # damit der aeussere Ring mit den roemischen Ziffern sichtbar bleibt.
     {"type": "star_disc", "id": "sternscheibe", "x": 0, "y": 0, "z": 4.40,
-     "radius": 17.5, "image": "sternhimmel.png"},
+     "radius": 15.35, "image": "sternhimmel.png"},
 
     # Alle 13 Tierkreiszeichen der Luebecker Uhr (inkl. Schlangentraeger
     # zwischen Skorpion und Schuetze, wie am echten Sternbild-Pfad), gleich-
@@ -187,31 +195,31 @@ GEAR_DATA = [
     # als Textur (keine eigene Modellierung noetig) und ist ein Kind der
     # Sternscheibe mit automatischer Gegenrotation.
     {"type": "zodiac_figure", "id": "widder", "parent_id": "sternscheibe",
-     "angle_deg": 0.00, "orbit_radius": 11.5, "image": "widder.png"},
+     "angle_deg": 225.00, "orbit_radius": 10.09, "image": "widder.png"},
     {"type": "zodiac_figure", "id": "stier", "parent_id": "sternscheibe",
-     "angle_deg": 27.69, "orbit_radius": 11.5, "image": "stier.png"},
+     "angle_deg": 240.00, "orbit_radius": 10.09, "image": "stier.png"},
     {"type": "zodiac_figure", "id": "zwilling", "parent_id": "sternscheibe",
-     "angle_deg": 55.38, "orbit_radius": 11.5, "image": "zwilling.png"},
+     "angle_deg": 270.00, "orbit_radius": 10.09, "image": "zwilling.png"},
     {"type": "zodiac_figure", "id": "krebs", "parent_id": "sternscheibe",
-     "angle_deg": 83.08, "orbit_radius": 11.5, "image": "krebs.png"},
+     "angle_deg": 300.00, "orbit_radius": 10.09, "image": "krebs.png"},
     {"type": "zodiac_figure", "id": "loewe", "parent_id": "sternscheibe",
-     "angle_deg": 110.77, "orbit_radius": 11.5, "image": "loewe.png"},
+     "angle_deg": 330.00, "orbit_radius": 10.09, "image": "loewe.png"},
     {"type": "zodiac_figure", "id": "jungfrau", "parent_id": "sternscheibe",
-     "angle_deg": 138.46, "orbit_radius": 11.5, "image": "jungfrau.png"},
+     "angle_deg": 7.50, "orbit_radius": 10.09, "image": "jungfrau.png"},
     {"type": "zodiac_figure", "id": "waage", "parent_id": "sternscheibe",
-     "angle_deg": 166.15, "orbit_radius": 11.5, "image": "waage.png"},
+     "angle_deg": 30.00, "orbit_radius": 10.09, "image": "waage.png"},
     {"type": "zodiac_figure", "id": "skorpion", "parent_id": "sternscheibe",
-     "angle_deg": 193.85, "orbit_radius": 11.5, "image": "skorpion.png"},
+     "angle_deg": 285.00, "orbit_radius": 10.09, "image": "skorpion.png"},
     {"type": "zodiac_figure", "id": "schlangentraeger", "parent_id": "sternscheibe",
-     "angle_deg": 221.54, "orbit_radius": 11.5, "image": "schlangentraeger.png"},
+     "angle_deg": 60.00, "orbit_radius": 10.09, "image": "schlangentraeger.png"},
     {"type": "zodiac_figure", "id": "schuetze", "parent_id": "sternscheibe",
-     "angle_deg": 249.23, "orbit_radius": 11.5, "image": "schuetze.png"},
+     "angle_deg": 90.00, "orbit_radius": 10.09, "image": "schuetze.png"},
     {"type": "zodiac_figure", "id": "steinbock", "parent_id": "sternscheibe",
-     "angle_deg": 276.92, "orbit_radius": 11.5, "image": "steinbock.png"},
+     "angle_deg": 120.00, "orbit_radius": 10.09, "image": "steinbock.png"},
     {"type": "zodiac_figure", "id": "wassermann", "parent_id": "sternscheibe",
-     "angle_deg": 304.62, "orbit_radius": 11.5, "image": "wassermann.png"},
+     "angle_deg": 150.00, "orbit_radius": 10.09, "image": "wassermann.png"},
     {"type": "zodiac_figure", "id": "fische", "parent_id": "sternscheibe",
-     "angle_deg": 332.31, "orbit_radius": 11.5, "image": "fische.png"},
+     "angle_deg": 195.00, "orbit_radius": 10.09, "image": "fische.png"},
 
     # Zentrales "Heiland"-Medaillon (Christus mit Erdkugel, Strahlenkranz) -
     # sitzt exakt im Zentrum der Sternscheibe (orbit_radius=0). Nutzt dieselbe
@@ -219,7 +227,7 @@ GEAR_DATA = [
     # von der Scheibendrehung nie "mitdreht", sondern fest ausgerichtet bleibt
     # (wie im Original).
     {"type": "zodiac_figure", "id": "heiland", "parent_id": "sternscheibe",
-     "angle_deg": 0.0, "orbit_radius": 0.0, "image": "heiland.png", "height": 7.0},
+     "angle_deg": 0.0, "orbit_radius": 0.0, "image": "heiland.png", "height": 6.14},
 ]
 
 
@@ -584,8 +592,8 @@ def add_spoked_gear_profile(bm, profile_xy, hub_radius, rim_inner_radius, spoke_
 
 
 def build_gear_mesh(name, module, teeth, thickness, outer_radius_dev=None, spoked=False,
-                    num_spokes=6, hub_radius_ratio=0.22, rim_inner_ratio=0.80,
-                    spoke_width_ratio=0.16):
+                    num_spokes=6, hub_radius_ratio=0.22, rim_inner_ratio=0.915,
+                    spoke_width_ratio=0.08):
     """Baut ein Zahnrad mit echter Evolventenverzahnung, oder im Dev-Modus einen
     simplen glatten Zylinder (Performance-Vorschau ohne Zähne). Mit spoked=True
     entsteht ein Speichenrad (6 gleich dicke Speichen, wie im Original-Foto der
@@ -687,7 +695,26 @@ def build_axis_mesh(name, radius, length, hollow=False, wall_thickness=0.05):
     return mesh
 
 
-def build_axis_object(entry, collection, brass_material, transparent_material):
+def get_or_create_axle_steel_material():
+    """Zweite Stahl-Variante speziell für einzelne Achsen (z.B. 3_4/8_9) - etwas
+    dunkler/kühler als das Zahnrad-Stahl, damit sich Achse und Räder optisch
+    leicht unterscheiden, aber erkennbar zur selben Materialfamilie gehören."""
+    if AXLE_STEEL_MATERIAL_NAME in bpy.data.materials:
+        return bpy.data.materials[AXLE_STEEL_MATERIAL_NAME]
+
+    mat = bpy.data.materials.new(AXLE_STEEL_MATERIAL_NAME)
+    mat.use_nodes = True
+    bsdf = mat.node_tree.nodes.get("Principled BSDF")
+    if bsdf is not None:
+        bsdf.inputs["Base Color"].default_value = (0.30, 0.32, 0.36, 1.0)  # dunkler, kuehleres Stahlblau-Grau
+        bsdf.inputs["Metallic"].default_value = 1.0
+        bsdf.inputs["Roughness"].default_value = 0.30  # etwas glaenzender (poliertes Achsenstahl)
+        if "Specular IOR Level" in bsdf.inputs:
+            bsdf.inputs["Specular IOR Level"].default_value = 0.55
+    return mat
+
+
+def build_axis_object(entry, collection, brass_material, transparent_material, axle_steel_material=None):
     radius = float(entry.get("r", 0.2)) * SCALE
     length = float(entry.get("length", 5.0)) * SCALE
     hollow = bool(entry.get("hollow", False))
@@ -708,8 +735,14 @@ def build_axis_object(entry, collection, brass_material, transparent_material):
     axis_letter = str(entry.get("axis", "z")).lower()
     obj.rotation_euler = AXIS_ALIGN_EULER.get(axis_letter, AXIS_ALIGN_EULER["z"])
 
-    # Material zuweisen (transparent bei Hohlachsen, Messing/Standard bei massiven Achsen)
-    mat = transparent_material if hollow else brass_material
+    # Material zuweisen: transparent bei Hohlachsen, sonst wahlweise die
+    # (dunklere) Achsen-Stahlvariante (entry["steel"]=True) oder Messing/Standard.
+    if hollow:
+        mat = transparent_material
+    elif bool(entry.get("steel", False)) and axle_steel_material is not None:
+        mat = axle_steel_material
+    else:
+        mat = brass_material
     if mesh.materials:
         mesh.materials[0] = mat
     else:
@@ -911,44 +944,55 @@ def add_hemisphere_shell(bm, radius, thickness, center, segments=32, rings=16,
 
 
 def build_sun_hand_mesh(name, length, sun_radius, rays, thickness,
-                        rod_radius=None, rod_segments=16, ray_length_ratio=0.55,
+                        rod_radius=None, rod_segments=16, ray_length_ratio=1.6,
                         tail_length_ratio=0.6):
     """Zeiger wie auf dem Foto der Lübecker Astronomischen Uhr: ein dünnes,
-    rundes goldenes Rohr (echter Zylinder, kein flaches Blech) von der Nabe bis
-    kurz vor die Spitze, dort ein flaches Sonnenmedaillon mit Strahlenzacken.
-    Das Rohr liegt entlang der lokalen Y-Achse ("12-Uhr"-Richtung bei
-    Startwinkel 0); die ganze Zeiger-Baugruppe rotiert wie gewohnt um die
-    lokale Z-Achse."""
+    rundes goldenes Rohr (echter Zylinder) von der Nabe bis zur Spitze, dort
+    eine erhabene goldene KUGEL (kein flaches Medaillon) mit einem Kranz aus
+    einzelnen, duennen Strahlenzacken (mit sichtbaren Luecken dazwischen -
+    keine geschlossene Zackenscheibe), wie im Original. Das Rohr liegt entlang
+    der lokalen Y-Achse ("12-Uhr"-Richtung bei Startwinkel 0); die ganze
+    Zeiger-Baugruppe rotiert wie gewohnt um die lokale Z-Achse."""
     if rod_radius is None:
         rod_radius = sun_radius * 0.10  # dünn, wie ein Rohr - nicht wie eine Klinge
 
     bm = bmesh.new()
 
-    # 1) Rohr: von der Rückseite (Gegengewicht) bis knapp in das Sonnenmedaillon
-    #    hinein (Überlappung vermeidet eine Lücke).
+    # 1) Rohr: von der Rückseite (Gegengewicht) bis in die Kugel hinein
+    #    (Überlappung vermeidet eine Lücke).
     tail_length = sun_radius * tail_length_ratio
-    add_rod_geometry(bm, rod_radius, -tail_length, length - sun_radius * 0.3, rod_segments)
+    add_rod_geometry(bm, rod_radius, -tail_length, length + sun_radius * 0.3, rod_segments)
 
-    # 2) Sonnensymbol an der Spitze: flache Kreisscheibe mit Strahlenzacken,
-    #    wird gleich zusammen mit dem Rohr extrudiert/verdickt.
+    # 2) Goldene, gewölbte Kuppe an der Spitze (wie getriebenes Goldblech -
+    #    KEINE Vollkugel). Flacher Deckel unten, leichte Wölbung nach oben.
+    dome_center = (0.0, length, -sun_radius * 0.15)  # Boden leicht versenkt,
+    # damit die Kuppe insgesamt mittig zur Rohr-/Strahlenebene sitzt.
+    _add_hemisphere_dome(bm, sun_radius, dome_center, lat_segments=10, lon_segments=24,
+                         material_index=0, height_ratio=0.42)
+
+    # 3) Kranz aus einzelnen, duennen Strahlenzacken um die Kugel-Basis, MIT
+    #    sichtbaren Luecken dazwischen (nicht als eine durchgehende Zackenscheibe,
+    #    sondern als separate, schmale Dreiecke - wie im Original).
     ray_length = sun_radius * ray_length_ratio
-    n = rays * 2
-    sun_points = []
-    for i in range(n):
-        angle = i * (2.0 * math.pi / n) + math.pi / 2.0  # ein Zacken zeigt exakt nach vorn
-        r = sun_radius + ray_length if i % 2 == 0 else sun_radius
-        x = r * math.cos(angle)
-        y = length + r * math.sin(angle)
-        sun_points.append((x, y))
-    sun_verts = [bm.verts.new((x, y, 0.0)) for x, y in sun_points]
-    sun_face = bm.faces.new(sun_verts)
+    ray_base_half_angle = (2.0 * math.pi / rays) * 0.18  # schmale Basis, deutliche Luecken
+    for i in range(rays):
+        center_angle = i * (2.0 * math.pi / rays) + math.pi / 2.0
+        a0 = center_angle - ray_base_half_angle
+        a1 = center_angle + ray_base_half_angle
+        base_l = (sun_radius * math.cos(a0), length + sun_radius * math.sin(a0))
+        base_r = (sun_radius * math.cos(a1), length + sun_radius * math.sin(a1))
+        tip = ((sun_radius + ray_length) * math.cos(center_angle),
+               length + (sun_radius + ray_length) * math.sin(center_angle))
+        v0 = bm.verts.new((base_l[0], base_l[1], 0.0))
+        v1 = bm.verts.new((base_r[0], base_r[1], 0.0))
+        v2 = bm.verts.new((tip[0], tip[1], 0.0))
+        ray_face = bm.faces.new((v0, v1, v2))
+        bmesh.ops.recalc_face_normals(bm, faces=[ray_face])
+        extrude_result = bmesh.ops.extrude_face_region(bm, geom=[ray_face])
+        extruded_verts = [v for v in extrude_result["geom"] if isinstance(v, bmesh.types.BMVert)]
+        ray_thickness = thickness * 0.4  # Zacken deutlich duenner als die Kugel
+        bmesh.ops.translate(bm, verts=extruded_verts, vec=(0.0, 0.0, ray_thickness))
 
-    bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
-    # Nur die (noch flache) Sonnenscheibe bekommt eine Dicke - das Rohr ist bereits
-    # ein fertiger 3D-Zylinder und wird hier nicht nochmal extrudiert.
-    extrude_result = bmesh.ops.extrude_face_region(bm, geom=[sun_face])
-    extruded_verts = [v for v in extrude_result["geom"] if isinstance(v, bmesh.types.BMVert)]
-    bmesh.ops.translate(bm, verts=extruded_verts, vec=(0.0, 0.0, thickness))
     bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
 
     mesh = bpy.data.meshes.new(name + "_Mesh")
@@ -995,16 +1039,19 @@ def _add_uv_sphere(bm, radius, center, lat_segments=10, lon_segments=16, materia
             f.material_index = material_index_fn(f.calc_center_median())
 
 
-def _add_hemisphere_dome(bm, radius, center, lat_segments=8, lon_segments=16, material_index=0):
-    """Baut eine massive, nach oben gewölbte Halbkugel (flacher Deckel am Boden
-    bei z=center.z, Kuppel bis z=center.z+radius) - für die schwarze Fassung
-    der Mondkugel."""
+def _add_hemisphere_dome(bm, radius, center, lat_segments=8, lon_segments=16,
+                         material_index=0, height_ratio=1.0):
+    """Baut eine massive, nach oben gewölbte Kuppel (flacher Deckel am Boden
+    bei z=center.z, Kuppelspitze bei z=center.z + radius*height_ratio).
+    height_ratio=1.0 ergibt eine volle Halbkugel; kleinere Werte (z.B. 0.35)
+    ergeben eine flache Wölbung wie ein getriebenes Goldblech (siehe
+    Sonnenzeiger) statt einer Kugelhälfte."""
     cx, cy, cz = center
-    pole = bm.verts.new((cx, cy, cz + radius))
+    pole = bm.verts.new((cx, cy, cz + radius * height_ratio))
     rings = []
     for i in range(1, lat_segments + 1):
         theta = (math.pi / 2.0) * i / lat_segments  # 0 an der Kuppelspitze, pi/2 am Rand (Aequator)
-        z = radius * math.cos(theta) + cz
+        z = radius * height_ratio * math.cos(theta) + cz
         ring_r = radius * math.sin(theta)
         ring = []
         for j in range(lon_segments):
@@ -1363,7 +1410,7 @@ def build_zodiac_figure_object(entry, collection, fps, parent_obj, parent_dir, p
     angle_deg = float(entry.get("angle_deg", 0.0))
     angle = math.radians(angle_deg)
     correction_deg = float(entry.get("model_rotation_correction_deg", 0.0))
-    height = float(entry.get("height", 4.5))
+    height = float(entry.get("height", 3.94))
     # Freier Feinversatz (in denselben Welt-Einheiten wie orbit_radius) - wird
     # NACH der Kreisformel addiert, damit man eine Figur bei Bedarf einfach
     # "nachschieben" kann, ohne angle_deg/orbit_radius neu ausrechnen zu muessen.
@@ -1634,6 +1681,7 @@ def main():
 
     brass_material = get_or_create_brass_material()
     steel_material = get_or_create_steel_material()
+    axle_steel_material = get_or_create_axle_steel_material()
     transparent_material = get_or_create_transparent_material()
     dial_material = get_or_create_dial_material()
     moon_material = get_or_create_moon_material()
@@ -1649,7 +1697,7 @@ def main():
             obj = build_gear_object(entry, collection, steel_material, fps)
             created.append(obj)
         elif etype == "axis":
-            obj = build_axis_object(entry, collection, brass_material, transparent_material)
+            obj = build_axis_object(entry, collection, brass_material, transparent_material, axle_steel_material)
             created.append(obj)
         elif etype == "dial":
             obj = build_dial_object(entry, collection, dial_material)
