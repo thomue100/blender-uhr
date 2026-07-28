@@ -144,12 +144,19 @@ GEAR_DATA = [
     {"type": "axis", "x": 0, "y": 0, "z": -0.4, "length": 4.8, "r": 0.35, "wall_thickness": 0.15, "hollow": True,
      "id": "56"},
 
-    # Kleines Abtriebs-/Antriebs-Zahnrad (15 Zaehne) auf der 56-Welle (dieselbe
-    # Welle wie Rad 5+6) - sitzt am hinteren Ende dieser Welle, "nach hinten
-    # raus" (gegenueber vom Zifferblatt), ein Stueck hinter Rad 10 (dem
-    # hintersten Hauptrad). Bleibt massiv (kein "spoked"), da klein.
-    {"type": "gear", "group": None, "x": 0, "y": 0, "z": -0.3, "dir": SHAFT_56_DIR, "speed": SHAFT_56_SPEED,
-     "axis": "z", "id": "abtrieb56", "teeth": 15, "thickness": 0.25},
+    # Kleines Zahnrad (15 Zaehne), das mit dem MITTLEREN der drei oberen
+    # Kleines Zahnrad (15 Zaehne), das mit dem HINTERSTEN der grossen
+    # Zahnraeder (Rad 6, z=2, teilt die 56-Welle mit Rad 5) in Eingriff steht -
+    # auf einer eigenen, neuen Welle.
+    # y-Abstand exakt aus den Waelzkreisradien berechnet: (18.0+3.375)/4 = 5.34375
+    {"type": "gear", "group": None, "x": 0, "y": 5.34375, "z": 2, "dir": -SHAFT_56_DIR,
+     "speed": SHAFT_56_SPEED * (80.0 / 15.0), "axis": "z", "id": "abtrieb56", "teeth": 15, "thickness": 0.25},
+
+    # Kurzer, massiver Wellenstummel hinter diesem Rad, der "nach hinten
+    # heraus" ragt (gegenueber vom Zifferblatt) - rein dekorativ, deutet die
+    # Antriebswelle dieses Abtriebsrads an.
+    {"type": "axis", "x": 0, "y": 5.34375, "z": 1.55, "length": 0.7,
+     "r": 0.09, "hollow": False, "id": "abtrieb56_welle"},
     # Aeussere Hohlwelle darueber, umhuellt die Welle von 6/5; traegt Rad 2.
     {"type": "axis", "x": 0, "y": 0, "z": -0.4, "length": 4.8, "r": 0.60, "wall_thickness": 0.20, "hollow": True,
      "id": "2"},
@@ -189,37 +196,37 @@ GEAR_DATA = [
     {"type": "star_disc", "id": "sternscheibe", "x": 0, "y": 0, "z": 4.40,
      "radius": 15.35, "image": "sternhimmel.png"},
 
-    # Alle 13 Tierkreiszeichen der Luebecker Uhr (inkl. Schlangentraeger
-    # zwischen Skorpion und Schuetze, wie am echten Sternbild-Pfad), gleich-
-    # maessig verteilt (360/13 Grad). Jede Figur nutzt das mitgelieferte PNG
-    # als Textur (keine eigene Modellierung noetig) und ist ein Kind der
+    # 12 der 13 Tierkreiszeichen der Luebecker Uhr (Skorpion fehlt hier bewusst
+    # - er ist fest in sternhimmel.png aufgemalt und braucht daher keine
+    # eigene positionierbare Figur). Positionen wurden vom Nutzer per Hand
+    # anhand des Referenzfotos ermittelt. Jede Figur nutzt das mitgelieferte
+    # PNG als Textur (keine eigene Modellierung noetig) und ist ein Kind der
     # Sternscheibe mit automatischer Gegenrotation.
     {"type": "zodiac_figure", "id": "widder", "parent_id": "sternscheibe",
-     "angle_deg": 225.00, "orbit_radius": 10.09, "image": "widder.png"},
+     "angle_deg": 61.00, "orbit_radius": 13, "image": "widder.png",
+     "x_offset": 1.0, "y_offset": -2.0, "height": 10},
     {"type": "zodiac_figure", "id": "stier", "parent_id": "sternscheibe",
-     "angle_deg": 240.00, "orbit_radius": 10.09, "image": "stier.png"},
+     "angle_deg": 87.00, "orbit_radius": 11.2, "image": "stier.png"},
     {"type": "zodiac_figure", "id": "zwilling", "parent_id": "sternscheibe",
-     "angle_deg": 270.00, "orbit_radius": 10.09, "image": "zwilling.png"},
+     "angle_deg": 117.00, "orbit_radius": 11.9, "image": "zwilling.png"},
     {"type": "zodiac_figure", "id": "krebs", "parent_id": "sternscheibe",
-     "angle_deg": 300.00, "orbit_radius": 10.09, "image": "krebs.png"},
+     "angle_deg": 142.00, "orbit_radius": 11.1, "image": "krebs.png"},
     {"type": "zodiac_figure", "id": "loewe", "parent_id": "sternscheibe",
-     "angle_deg": 330.00, "orbit_radius": 10.09, "image": "loewe.png"},
+     "angle_deg": 170.00, "orbit_radius": 8.8, "image": "loewe.png"},
     {"type": "zodiac_figure", "id": "jungfrau", "parent_id": "sternscheibe",
-     "angle_deg": 7.50, "orbit_radius": 10.09, "image": "jungfrau.png"},
+     "angle_deg": 208.00, "orbit_radius": 9, "image": "jungfrau.png"},
     {"type": "zodiac_figure", "id": "waage", "parent_id": "sternscheibe",
-     "angle_deg": 30.00, "orbit_radius": 10.09, "image": "waage.png"},
-    {"type": "zodiac_figure", "id": "skorpion", "parent_id": "sternscheibe",
-     "angle_deg": 285.00, "orbit_radius": 10.09, "image": "skorpion.png"},
+     "angle_deg": 244.00, "orbit_radius": 8, "image": "waage.png"},
     {"type": "zodiac_figure", "id": "schlangentraeger", "parent_id": "sternscheibe",
-     "angle_deg": 60.00, "orbit_radius": 10.09, "image": "schlangentraeger.png"},
+     "angle_deg": 290.00, "orbit_radius": 8.5, "image": "schlangentraeger.png"},
     {"type": "zodiac_figure", "id": "schuetze", "parent_id": "sternscheibe",
-     "angle_deg": 90.00, "orbit_radius": 10.09, "image": "schuetze.png"},
+     "angle_deg": 315.00, "orbit_radius": 10.5, "image": "schuetze.png"},
     {"type": "zodiac_figure", "id": "steinbock", "parent_id": "sternscheibe",
-     "angle_deg": 120.00, "orbit_radius": 10.09, "image": "steinbock.png"},
+     "angle_deg": 340.00, "orbit_radius": 11, "image": "steinbock.png"},
     {"type": "zodiac_figure", "id": "wassermann", "parent_id": "sternscheibe",
-     "angle_deg": 150.00, "orbit_radius": 10.09, "image": "wassermann.png"},
+     "angle_deg": 5.00, "orbit_radius": 11, "image": "wassermann.png"},
     {"type": "zodiac_figure", "id": "fische", "parent_id": "sternscheibe",
-     "angle_deg": 195.00, "orbit_radius": 10.09, "image": "fische.png"},
+     "angle_deg": 37.00, "orbit_radius": 11.5, "image": "fische.png"},
 
     # Zentrales "Heiland"-Medaillon (Christus mit Erdkugel, Strahlenkranz) -
     # sitzt exakt im Zentrum der Sternscheibe (orbit_radius=0). Nutzt dieselbe
@@ -1421,7 +1428,7 @@ def build_zodiac_figure_object(entry, collection, fps, parent_obj, parent_dir, p
     material, aspect_ratio = get_or_create_figure_material(image_filename)
 
     name = f"Tierkreiszeichen_{entry.get('id', '?')}"
-    vertical_anchor = entry.get("vertical_anchor", "center" if orbit_radius == 0.0 else "bottom")
+    vertical_anchor = entry.get("vertical_anchor", "center")
     mesh = build_zodiac_figure_mesh(name, height, aspect_ratio, vertical_anchor=vertical_anchor)
 
     # Statische Achsenkorrektur direkt in die Mesh-Geometrie backen (siehe
@@ -1739,6 +1746,15 @@ def main():
         r_pitch, r_base, r_addendum, r_dedendum = compute_gear_radii(GEAR_MODULE, teeth)
         print(f"  - {obj.name}: {teeth} Zähne -> Wälzkreis {r_pitch:.2f} / Kopfkreis {r_addendum:.2f}, "
               f"speed={entry.get('speed')}, dir={entry.get('dir')}")
+
+    # WICHTIG: Zeitleiste auf Frame 1 setzen. Bei Frame 1 ist die Rotation
+    # ALLER animierten Objekte exakt 0 - das entspricht 1:1 den in GEAR_DATA
+    # angegebenen angle_deg/orbit_radius-Werten (dem "Design"-Layout). Stand
+    # die Zeitleiste beim Ausführen des Skripts auf einem anderen Frame, würde
+    # sofort die zu diesem Frame gehörende (bereits gedrehte) Pose angezeigt -
+    # das sieht dann so aus, als waeren die Sternbilder "verschoben", obwohl
+    # die Werte in GEAR_DATA korrekt sind.
+    scene.frame_set(1)
 
 
 if __name__ == "__main__":
