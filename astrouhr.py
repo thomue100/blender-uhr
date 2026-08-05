@@ -76,6 +76,7 @@ SHAFT_10_DIR = -1
 SHAFT_10_SPEED = 1.6
 
 MOON_MATERIAL_NAME = "Mondkugel_Schwarzlack"
+GEGENGEWICHT_MATERIAL_NAME = "Zeiger_Gegengewicht_Blau"
 
 # --- Planetengetriebe an der Mondzeiger-Spitze (siehe "Getriebe.jpg") ---
 # Kleines, separates Modul für die beiden filigranen 24-zähnigen Getrieberäder
@@ -84,6 +85,20 @@ MOON_MATERIAL_NAME = "Mondkugel_Schwarzlack"
 # der tragenden Hauptgetriebe-Kette.
 MOON_GEAR_MODULE = 0.075
 MOON_GEAR_TEETH = 24  # historisch: an der Stralsunder Nikolaikirche je 24 Zähne
+
+# NEU: Statt eines festen Moduls wird der Modul jetzt aus einem Zielradius
+# abgeleitet (siehe module_for_addendum()) - das macht die Räder unabhängig
+# von der jeweiligen Mondkugelgröße immer passend groß. Versuchswert: halber
+# Mondkugelradius (kann pro moon_hand-Eintrag über "gear_radius_ratio"
+# überschrieben werden).
+MOON_GEAR_RADIUS_RATIO = 0.5
+
+# Abstand (in denselben unskalierten Einheiten wie z.B. ball_radius), um den
+# das Differenzialgetriebe über die Basis-Höhe des Mondzeigers angehoben wird -
+# damit es sicher VOR dem Zifferblatt liegt und nicht mit dem duennen Rohr des
+# Sonnenzeigers kollidiert (kann pro Eintrag über "gear_z_offset" angepasst
+# werden).
+MOON_GEAR_Z_OFFSET = 0.4
 
 # --- Sternscheibe (Astrolabium) mit "schwerkraftgefuehrten" Tierkreisfiguren ---
 # Die Scheibe selbst dreht sich einmal pro (siderischem) Tag; die goldenen
@@ -138,10 +153,11 @@ GEAR_DATA = [
      "axis": "z", "id": 3, "teeth": 16, "thickness": 0.25},
 
     # --- Sichtbare (teil-transparente) Hohlwellen-Objekte fuer den zentralen Turm ---
-    # Innerste, massive Welle von Rad 10.
-    {"type": "axis", "x": 0, "y": 0, "z": -0.4, "length": 4.8, "r": 0.15, "hollow": False, "id": "10"},
+    # Innerste, massive Welle von Rad 10. (etwas duenner als zuvor, passend
+    # zum neuen, filigraneren Mondphasen-Differenzialgetriebe)
+    {"type": "axis", "x": 0, "y": 0, "z": -0.4, "length": 4.8, "r": 0.10, "hollow": False, "id": "10"},
     # Hohlwelle, die die Welle von Rad 10 umhuellt; traegt Rad 6 + 5.
-    {"type": "axis", "x": 0, "y": 0, "z": -0.4, "length": 4.8, "r": 0.35, "wall_thickness": 0.15, "hollow": True,
+    {"type": "axis", "x": 0, "y": 0, "z": -0.4, "length": 4.8, "r": 0.25, "wall_thickness": 0.10, "hollow": True,
      "id": "56"},
 
     # Kleines Zahnrad (15 Zaehne), das mit dem MITTLEREN der drei oberen
@@ -158,7 +174,7 @@ GEAR_DATA = [
     {"type": "axis", "x": 0, "y": 5.34375, "z": 1.55, "length": 0.7,
      "r": 0.09, "hollow": False, "id": "abtrieb56_welle"},
     # Aeussere Hohlwelle darueber, umhuellt die Welle von 6/5; traegt Rad 2.
-    {"type": "axis", "x": 0, "y": 0, "z": -0.4, "length": 4.8, "r": 0.60, "wall_thickness": 0.20, "hollow": True,
+    {"type": "axis", "x": 0, "y": 0, "z": -0.4, "length": 4.8, "r": 0.45, "wall_thickness": 0.15, "hollow": True,
      "id": "2"},
 
     # --- Zifferblatt + Sonnenzeiger (verdeckt das Räderwerk, wie bei einer echten Uhr) ---
@@ -325,6 +341,43 @@ def get_or_create_moon_material():
     return mat
 
 
+def get_or_create_counterweight_material():
+    """Blaue, leicht glänzende Scheibe als Gegengewicht am kurzen Ende der
+    Zeiger (Sonnen- wie Mondzeiger) - wie im Original-Vorbild."""
+    if GEGENGEWICHT_MATERIAL_NAME in bpy.data.materials:
+        return bpy.data.materials[GEGENGEWICHT_MATERIAL_NAME]
+
+    mat = bpy.data.materials.new(GEGENGEWICHT_MATERIAL_NAME)
+    mat.use_nodes = True
+    bsdf = mat.node_tree.nodes.get("Principled BSDF")
+    if bsdf is not None:
+        bsdf.inputs["Base Color"].default_value = (0.55, 0.76, 0.94, 1.0)
+        bsdf.inputs["Metallic"].default_value = 0.0
+        bsdf.inputs["Roughness"].default_value = 0.3
+        if "Specular IOR Level" in bsdf.inputs:
+            bsdf.inputs["Specular IOR Level"].default_value = 0.5
+    return mat
+
+
+def get_or_create_transparent_gold_material():
+    """Transparentes Gold für den Mondzeigerarm (Kröpfung/Brücke) - lässt die
+    darin verlaufende (dunkle) Mondkugel-Welle durchscheinen."""
+    name = "Mondzeigerarm_Gold_Transparent"
+    if name in bpy.data.materials:
+        return bpy.data.materials[name]
+
+    mat = bpy.data.materials.new(name)
+    mat.use_nodes = True
+    mat.blend_method = 'BLEND'
+    bsdf = mat.node_tree.nodes.get("Principled BSDF")
+    if bsdf is not None:
+        bsdf.inputs["Base Color"].default_value = (0.85, 0.65, 0.13, 1.0)
+        bsdf.inputs["Metallic"].default_value = 0.9
+        bsdf.inputs["Roughness"].default_value = 0.2
+        bsdf.inputs["Alpha"].default_value = 0.35
+    return mat
+
+
 def get_or_create_transparent_material():
     if AXIS_MATERIAL_NAME in bpy.data.materials:
         return bpy.data.materials[AXIS_MATERIAL_NAME]
@@ -488,6 +541,15 @@ def compute_gear_radii(module, teeth):
     r_addendum = r_pitch + ADDENDUM_COEFF * module
     r_dedendum = r_pitch - DEDENDUM_COEFF * module
     return r_pitch, r_base, r_addendum, r_dedendum
+
+
+def module_for_addendum(target_r_addendum, teeth):
+    """Kehrt compute_gear_radii() um: liefert den Modul, der bei gegebener
+    Zähnezahl exakt den gewünschten Kopfkreis-Außenradius ergibt
+    (r_addendum = module*(teeth/2 + ADDENDUM_COEFF) -> module auflösen).
+    Damit lassen sich Zahnräder direkt über ihre gewünschte sichtbare Größe
+    definieren, statt den Modul von Hand zu erraten."""
+    return target_r_addendum / (teeth / 2.0 + ADDENDUM_COEFF)
 
 
 def _involute_angle(r_base, r):
@@ -952,7 +1014,7 @@ def add_hemisphere_shell(bm, radius, thickness, center, segments=32, rings=16,
 
 def build_sun_hand_mesh(name, length, sun_radius, rays, thickness,
                         rod_radius=None, rod_segments=16, ray_length_ratio=1.6,
-                        tail_length_ratio=0.6):
+                        tail_length_ratio=1.3):
     """Zeiger wie auf dem Foto der Lübecker Astronomischen Uhr: ein dünnes,
     rundes goldenes Rohr (echter Zylinder) von der Nabe bis zur Spitze, dort
     eine erhabene goldene KUGEL (kein flaches Medaillon) mit einem Kranz aus
@@ -969,6 +1031,13 @@ def build_sun_hand_mesh(name, length, sun_radius, rays, thickness,
     #    (Überlappung vermeidet eine Lücke).
     tail_length = sun_radius * tail_length_ratio
     add_rod_geometry(bm, rod_radius, -tail_length, length + sun_radius * 0.3, rod_segments)
+
+    # 1b) Blaue Gegengewichts-Scheibe ganz am Rückende (wie im Original-Vorbild)
+    counterweight_radius = rod_radius * 2.2
+    counterweight_thickness = rod_radius * 1.1
+    add_flat_disc(bm, counterweight_radius, counterweight_thickness,
+                  (0.0, -tail_length - counterweight_radius, -counterweight_thickness / 2.0),
+                  segments=20, material_index=1)
 
     # 2) Goldene, gewölbte Kuppe an der Spitze (wie getriebenes Goldblech -
     #    KEINE Vollkugel). Flacher Deckel unten, leichte Wölbung nach oben.
@@ -1082,6 +1151,24 @@ def _add_hemisphere_dome(bm, radius, center, lat_segments=8, lon_segments=16,
         f.material_index = material_index
 
 
+def add_flat_disc(bm, radius, thickness, center, segments=24, material_index=0):
+    """Baut eine einfache flache Scheibe (Gegengewicht) - liegt in der
+    XY-Ebene, erstreckt sich nach oben (+Z) um 'thickness'."""
+    cx, cy, cz = center
+    bottom = [bm.verts.new((cx + radius * math.cos(2 * math.pi * i / segments),
+                            cy + radius * math.sin(2 * math.pi * i / segments),
+                            cz)) for i in range(segments)]
+    face = bm.faces.new(bottom)
+    face.material_index = material_index
+    bmesh.ops.recalc_face_normals(bm, faces=[face])
+    extrude_result = bmesh.ops.extrude_face_region(bm, geom=[face])
+    extruded_verts = [v for v in extrude_result["geom"] if isinstance(v, bmesh.types.BMVert)]
+    new_faces = [f for f in extrude_result["geom"] if isinstance(f, bmesh.types.BMFace)]
+    bmesh.ops.translate(bm, verts=extruded_verts, vec=(0.0, 0.0, thickness))
+    for f in new_faces:
+        f.material_index = material_index
+
+
 def add_flat_gear(bm, module, teeth, z_center, thickness, material_index=0,
                   x_offset=0.0, y_offset=0.0):
     """Flaches kleines Zahnrad (echte Evolventenverzahnung) in der lokalen
@@ -1102,17 +1189,136 @@ def add_flat_gear(bm, module, teeth, z_center, thickness, material_index=0,
     return r_addendum
 
 
-def build_moon_arm_mesh(name, length, rod_radius, tail_length_ratio, ball_radius, segments=16):
-    """Das Rohr des Mondzeigers PLUS die feste schwarze Halbkugel-Schale an der
-    Spitze (cupt die Kugel). Keine Platinen/Bodenplatte mehr hier - das war
-    nicht originalgetreu. Material-Index 0 = Messing/Gold (Rohr), 1 =
-    Schwarzlack (Schale, wie im vom Nutzer bereitgestellten Referenzcode)."""
-    bm = bmesh.new()
-    tail_length = ball_radius * tail_length_ratio
-    add_rod_geometry(bm, rod_radius, -tail_length, length, segments)
-    for f in bm.faces:
-        f.material_index = 0  # Messing/Gold
+def _v_sub(a, b):
+    return (a[0] - b[0], a[1] - b[1], a[2] - b[2])
 
+
+def _v_add(a, b):
+    return (a[0] + b[0], a[1] + b[1], a[2] + b[2])
+
+
+def _v_scale(a, s):
+    return (a[0] * s, a[1] * s, a[2] * s)
+
+
+def _v_dot(a, b):
+    return a[0] * b[0] + a[1] * b[1] + a[2] * b[2]
+
+
+def _v_cross(a, b):
+    return (a[1] * b[2] - a[2] * b[1],
+            a[2] * b[0] - a[0] * b[2],
+            a[0] * b[1] - a[1] * b[0])
+
+
+def _v_normalize(a):
+    length = math.sqrt(a[0] * a[0] + a[1] * a[1] + a[2] * a[2])
+    return (a[0] / length, a[1] / length, a[2] / length) if length > 1e-9 else a
+
+
+def build_mitered_pipe_mesh(name, points, radius, segments=24, up_ref=(1.0, 0.0, 0.0)):
+    """Portiert 1:1 aus Mondzeiger.py (dort 'create_mitered_pipe'): baut ein
+    durchgehendes Rohr aus geraden Zylinder-Segmenten, deren Enden an jedem
+    Knick auf Gehrung (Miter) geschnitten sind - wie beim Verbinden echter
+    Rohrstücke. Das ist die 'Brücke' (Kröpfung), die über das Mondrad hinweg-
+    führt, damit dieses frei drehen kann."""
+    pts = [tuple(p) for p in points]
+    n_pts = len(pts)
+    seg_dirs = [_v_normalize(_v_sub(pts[i + 1], pts[i])) for i in range(n_pts - 1)]
+
+    normals = [seg_dirs[0]]
+    for i in range(1, n_pts - 1):
+        normals.append(_v_normalize(_v_add(seg_dirs[i - 1], seg_dirs[i])))
+    normals.append(seg_dirs[-1])
+
+    n = segments
+    verts = []
+    ring_offset = []
+    for i in range(n_pts):
+        p = pts[i]
+        axis_dir = seg_dirs[i] if i < n_pts - 1 else seg_dirs[-1]
+        u = _v_normalize(_v_sub(up_ref, _v_scale(axis_dir, _v_dot(up_ref, axis_dir))))
+        v = _v_cross(axis_dir, u)
+        ring_offset.append(len(verts))
+        for k in range(n):
+            theta = 2 * math.pi * k / n
+            radial = _v_add(_v_scale(u, radius * math.cos(theta)),
+                            _v_scale(v, radius * math.sin(theta)))
+            denom = _v_dot(axis_dir, normals[i])
+            t = -_v_dot(radial, normals[i]) / denom if abs(denom) > 1e-6 else 0.0
+            verts.append(_v_add(_v_add(p, radial), _v_scale(axis_dir, t)))
+
+    faces = []
+    for i in range(n_pts - 1):
+        o1, o2 = ring_offset[i], ring_offset[i + 1]
+        for k in range(n):
+            a, b = o1 + k, o1 + (k + 1) % n
+            c, d = o2 + (k + 1) % n, o2 + k
+            faces.append((a, b, c, d))
+
+    verts.append(pts[0])
+    center_start = len(verts) - 1
+    for k in range(n):
+        a, b = ring_offset[0] + k, ring_offset[0] + (k + 1) % n
+        faces.append((center_start, b, a))
+    verts.append(pts[-1])
+    center_end = len(verts) - 1
+    for k in range(n):
+        a, b = ring_offset[-1] + k, ring_offset[-1] + (k + 1) % n
+        faces.append((center_end, a, b))
+
+    mesh = bpy.data.meshes.new(name + "_Mesh")
+    mesh.from_pydata(verts, [], faces)
+    mesh.update()
+    return mesh
+
+
+def add_flat_gear_axis(bm, module, teeth, offset, thickness, axis='Z', material_index=0):
+    """Wie 'add_flat_gear', aber achsenfähig: baut das Zahnrad (echte Evolventen-
+    verzahnung, dieselbe build_involute_profile()) entlang Z (Standard, wie im
+    Original) ODER entlang Y - für unser senkrecht zueinander stehendes
+    Zahnradpaar (Mondrad auf der Mondphasenkugel-Welle, Y-Achse; Sonnenrad auf
+    der Sonnenzeiger-Welle, Z-Achse), genau wie in Mondzeiger.py."""
+    profile_xy, r_addendum = build_involute_profile(module, teeth)
+
+    def pt(u, v, s):
+        return (u, s, v) if axis == 'Y' else (u, v, s)
+
+    verts = [bm.verts.new(pt(x, y, offset)) for x, y in profile_xy]
+    face = bm.faces.new(verts)
+    faces_before = set(bm.faces)
+    bmesh.ops.recalc_face_normals(bm, faces=[face])
+    extrude_result = bmesh.ops.extrude_face_region(bm, geom=[face])
+    extruded_verts = [v for v in extrude_result["geom"] if isinstance(v, bmesh.types.BMVert)]
+    vec = (0.0, thickness, 0.0) if axis == 'Y' else (0.0, 0.0, thickness)
+    bmesh.ops.translate(bm, verts=extruded_verts, vec=vec)
+    for f in bm.faces:
+        if f not in faces_before:
+            f.material_index = material_index
+    face.material_index = material_index
+    return r_addendum
+
+
+def build_moon_gear_mesh(name, module, teeth, thickness, axis='Z'):
+    """Eigenständiges Zahnrad-Mesh (ohne Wellenstummel) - Sonnenrad bzw.
+    Mondrad des Differenzialgetriebes, mit echter Evolventenverzahnung."""
+    bm = bmesh.new()
+    r_addendum = add_flat_gear_axis(bm, module, teeth, 0.0, thickness, axis=axis, material_index=0)
+    bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
+    mesh = bpy.data.meshes.new(name + "_Mesh")
+    bm.to_mesh(mesh)
+    bm.free()
+    mesh.update()
+    return mesh, r_addendum
+
+
+def build_moon_arm_mesh(name, length, rod_radius, tail_length_ratio, ball_radius, segments=16):
+    """Nur noch die feste schwarze Halbkugel-Schale an der Spitze (cupt die
+    Kugel) - KEIN eigenes Rohr mehr hier (das übernimmt jetzt vollständig
+    die Kröpfungs-/Brücken-Röhre, die auf der korrekten, erhöhten Höhe
+    ball_center_z bis zur Kugel läuft - sonst gäbe es zwei parallele
+    Zeiger-Linien). Material-Index 1 = Schwarzlack (Schale)."""
+    bm = bmesh.new()
     br = ball_radius
     tip_y = length  # an dieser Stelle sitzt die Getriebekapsel (Kind-Objekt)
 
@@ -1487,6 +1693,7 @@ def build_hand_object(entry, collection, material, fps):
         mesh.materials[0] = material
     else:
         mesh.materials.append(material)
+    mesh.materials.append(get_or_create_counterweight_material())
 
     add_bevel_modifier(obj)
 
@@ -1499,14 +1706,20 @@ def build_hand_object(entry, collection, material, fps):
 
 
 def build_moon_hand_object(entry, collection, brass_material, moon_material, transparent_material, fps):
-    """Baut den Mondzeiger als ZWEI Objekte: den Arm (rotiert einmal pro Monat
-    mit der Mondzeiger-Welle, also Rad 10; trägt außerdem die feste Schale +
-    Platinen + Streben + Bodenplatte) und die Getriebe-Kapsel (Welle mit vier
-    Zahnrädern + Kugel) als KIND-Objekt an der Spitze. Die Kapsel erbt die
-    Arm-Rotation automatisch durchs Parenting und bekommt zusätzlich ihre
-    EIGENE, unabhängige Rotation - genau die Differenz aus Mondzeiger- und
-    Sonnenzeiger-Wellendrehzahl, wie beim historischen Planetengetriebe
-    (24:24-Räder, siehe Getriebe.jpg)."""
+    """Portiert die vollständige Getriebe-Geometrie aus Mondzeiger.py (nicht nur
+    das Grundprinzip!) - insbesondere:
+      - die Brücke ('Kröpfung') aus Gehrungsrohr-Segmenten, die über das
+        Mondrad hinwegführt, damit dieses frei drehen kann,
+      - das senkrecht zueinander stehende Zahnradpaar (Mondrad auf der
+        Mondphasenkugel-Welle = Y-Achse, Sonnenrad auf der Sonnenzeiger-Welle
+        = Z-Achse) mit exakt berechnetem, tangentialem Berührpunkt,
+      - Kugel UND Mondrad als gemeinsam rotierende Einheit (beide Kinder
+        desselben 'Drehachse'-Empties, wie in Mondzeiger.py - nicht die Kugel
+        als Kind des Rads, sondern beide auf derselben Welle sitzend).
+    Einziger Unterschied zu Mondzeiger.py: die Zähne selbst sind jetzt echte
+    Evolventenzähne (add_flat_gear_axis/build_involute_profile) statt der
+    einfachen Sägezahn-Silhouette, wie gewünscht "mit der Technik aus
+    AstroUhr etwas besser modelliert"."""
     length = float(entry.get("length", 14.5))
     ball_radius = float(entry.get("ball_radius", 1.1))
     rod_radius_ratio = float(entry.get("rod_radius_ratio", 0.16))
@@ -1516,45 +1729,195 @@ def build_moon_hand_object(entry, collection, brass_material, moon_material, tra
     axis_letter = str(entry.get("axis", "z")).lower()
     arm_dir = float(entry.get("dir", SHAFT_10_DIR))
     arm_speed = float(entry.get("speed", SHAFT_10_SPEED))
+    sun_dir = float(entry.get("sun_dir", SHAFT_56_DIR))
+    sun_speed = float(entry.get("sun_speed", SHAFT_56_SPEED))
 
-    # --- 1) Der Arm (Elternobjekt): Rohr + feste Schale/Platinen/Streben/Bodenplatte ---
-    arm_name = f"Zeiger_{entry.get('id', '?')}"
-    arm_mesh = build_moon_arm_mesh(arm_name, length, rod_radius, tail_length_ratio, ball_radius)
-    arm_obj = bpy.data.objects.new(arm_name, arm_mesh)
-    collection.objects.link(arm_obj)
-    arm_obj.location = (
+    base_location = (
         float(entry.get("x", 0.0)) * SCALE,
         float(entry.get("y", 0.0)) * SCALE,
         float(entry.get("z", 0.0)) * SCALE,
     )
-    arm_obj.rotation_euler = AXIS_ALIGN_EULER.get(axis_letter, AXIS_ALIGN_EULER["z"])
-    arm_mesh.materials.append(brass_material)  # Index 0: Messing/Gold (Rohr)
-    arm_mesh.materials.append(moon_material)  # Index 1: Schwarzlack (Schale)
+    axis_euler = AXIS_ALIGN_EULER.get(axis_letter, AXIS_ALIGN_EULER["z"])
+
+    # --- 1) Der Arm (Elternobjekt): Rohr + feste Schale - UNVERAENDERT wie
+    #     zuvor, liefert bereits das lange, gerade Rohr bis zur Kugel. ---
+    arm_name = f"Zeiger_{entry.get('id', '?')}"
+    arm_mesh = build_moon_arm_mesh(arm_name, length, rod_radius, tail_length_ratio, ball_radius)
+    arm_obj = bpy.data.objects.new(arm_name, arm_mesh)
+    collection.objects.link(arm_obj)
+    arm_obj.location = base_location
+    arm_obj.rotation_euler = axis_euler
+    arm_mesh.materials.append(brass_material)
+    arm_mesh.materials.append(moon_material)
     add_bevel_modifier(arm_obj)
     animate_spin(arm_obj, axis_letter, arm_dir, arm_speed, fps)
 
-    # --- 2) Die Getriebe-Kapsel (Kind-Objekt, eigene Rotation) ---
-    capsule_name = f"Getriebekapsel_{entry.get('id', '?')}"
-    capsule_mesh = build_moon_capsule_mesh(capsule_name, ball_radius)
-    capsule_obj = bpy.data.objects.new(capsule_name, capsule_mesh)
-    collection.objects.link(capsule_obj)
-    # Position IM LOKALEN Koordinatensystem des Arms (an dessen Spitze, y=length,
-    # in denselben unskalierten Einheiten wie das Rohr-Mesh selbst).
-    capsule_obj.location = (0.0, length, 0.0)
-    capsule_obj.rotation_euler = (0.0, 0.0, 0.0)
-    capsule_mesh.materials.append(brass_material)  # Index 0: Messing/Gold
-    capsule_mesh.materials.append(moon_material)  # Index 1: Schwarzlack
-    add_bevel_modifier(capsule_obj)
+    # --- 2) Getriebe-Geometrie (wie in Mondzeiger.py hergeleitet und dort
+    #     numerisch verifiziert). R = Zielradius der beiden Räder (Versuchs-
+    #     wert: halber Mondkugelradius). ACHSE_LAENGE = Abstand Kugel<->
+    #     gemeinsamer Drehachse MINUS R (nicht "length" selbst!) - siehe
+    #     Herleitung: die gemeinsame Drehachse beider Wellen (Mondzeiger-
+    #     Welle/Sonnenzeiger-Welle, hier "base_location") liegt nicht direkt
+    #     am Zahnrad, sondern um R davon versetzt, damit das (mit dem Arm
+    #     umlaufende) Mondrad ständig im selben Abstand zum ortsfesten
+    #     Sonnenrad bleibt (klassisches Planetengetriebe). ---
+    n_teeth_sun = int(entry.get("teeth_sun", MOON_GEAR_TEETH))
+    n_teeth_moon = int(entry.get("teeth_moon", MOON_GEAR_TEETH))
+    radius_ratio = float(entry.get("gear_radius_ratio", MOON_GEAR_RADIUS_RATIO))
+    R = ball_radius * radius_ratio
+    module_sun = module_for_addendum(R, n_teeth_sun)
+    module_moon = module_for_addendum(R, n_teeth_moon)
+    GEAR_DICKE = R * 0.35
+    ACHSE_LAENGE = length - R
 
-    capsule_obj.parent = arm_obj  # erbt Position/Rotation des Arms automatisch
+    # --- 2a) Mondrad ('n-zähniges Rad auf der Mondphasenkugel-Welle') samt
+    #     Bruecke ('Kroepfung') - Kinder eines gemeinsamen 'Drehachse'-Empty,
+    #     das an der Kugel-Position (Arm-Spitze) sitzt und sich mit der
+    #     korrekten Differenzdrehzahl dreht.
+    #
+    #     WICHTIG (Bugfix): build_moon_capsule_mesh baut die Kugel NICHT bei
+    #     (0,0,0), sondern bei (0,0,ball_center_z) - ball_center_z = 0.9*
+    #     ball_radius. Die Drehachse muss daher GENAU DORT liegen (nicht bei
+    #     z=0), sonst rotiert die Kugel nicht um ihren eigenen Mittelpunkt,
+    #     sondern schwenkt exzentrisch im Kreis um die falsche Achse -
+    #     dadurch "verliert die Schale die Kugel". ---
+    ball_center_z = ball_radius * 0.9
+    drehachse_name = f"Drehachse_{entry.get('id', '?')}"
+    drehachse_obj = bpy.data.objects.new(drehachse_name, None)
+    collection.objects.link(drehachse_obj)
+    drehachse_obj.parent = arm_obj
+    drehachse_obj.location = (0.0, length, ball_center_z)
 
-    # Eigene, ZUSAETZLICHE Rotation der Kapsel = Differenz zwischen Mondzeiger-
-    # und Sonnenzeiger-Wellendrehzahl (1:1-Übersetzung, wie die beiden
-    # historischen 24-Zähne-Räder). Das ist die eigentliche "Mondphasen"-Bewegung.
-    sun_dir = SHAFT_56_DIR
-    sun_speed = SHAFT_56_SPEED
-    differential = (arm_dir * arm_speed) - (sun_dir * sun_speed)
-    animate_spin(capsule_obj, "z", 1.0 if differential >= 0 else -1.0, abs(differential), fps)
+    moon_gear_name = f"Mondrad_{entry.get('id', '?')}"
+    moon_gear_mesh, _ = build_moon_gear_mesh(moon_gear_name, module_moon, n_teeth_moon, GEAR_DICKE, axis='Y')
+    moon_gear_obj = bpy.data.objects.new(moon_gear_name, moon_gear_mesh)
+    collection.objects.link(moon_gear_obj)
+    moon_gear_obj.parent = drehachse_obj
+    moon_gear_obj.location = (0.0, -ACHSE_LAENGE - GEAR_DICKE, 0.0)
+    moon_gear_mesh.materials.append(brass_material)
+    add_bevel_modifier(moon_gear_obj)
+
+    kapsel_name = f"Getriebekapsel_{entry.get('id', '?')}"
+    kapsel_mesh = build_moon_capsule_mesh(kapsel_name, ball_radius)
+    kapsel_obj = bpy.data.objects.new(kapsel_name, kapsel_mesh)
+    collection.objects.link(kapsel_obj)
+    kapsel_obj.parent = drehachse_obj
+    # Kompensiert den in der Kugel-Mesh bereits eingebackenen Versatz
+    # (ball_center_z), damit die Kugel exakt im Ursprung der Drehachse
+    # sitzt - dort, wo jetzt auch die Drehachse selbst liegt (s.o.).
+    kapsel_obj.location = (0.0, 0.0, -ball_center_z)
+    kapsel_mesh.materials.append(brass_material)
+    kapsel_mesh.materials.append(moon_material)
+    add_bevel_modifier(kapsel_obj)
+
+    # Brücke (Kröpfung): führt vom Rohr aus über das Mondrad hinweg - kurzer
+    # Stummel "hinter der Uhr" -> hoch -> rüber (über dem Zahnrad) -> runter
+    # auf Rohrhöhe. Kind des ARMS (nicht der Drehachse!), da sie sich NICHT
+    # mit dem Mondrad mitdrehen darf. Alle Z-Koordinaten liegen jetzt auf
+    # Höhe von ball_center_z (statt 0), da die ganze Mechanik der Drehachse
+    # gefolgt ist (s. Bugfix oben) - schmalerer Rohrradius (dünnere Achse).
+    # STUMMEL_LAENGE verlängert (nach hinten hin), damit das Gegengewicht
+    # weiter hinten sitzt, wie im Original-Vorbild.
+    BRUECKE_HOEHE = ball_center_z + R * 1.33
+    BRUECKE_RAND = R * 0.25
+    STUMMEL_LAENGE = R * 3.2
+    GEAR_Y_NAH = R
+    GEAR_Y_FERN = R - GEAR_DICKE
+    bruecke_pfad = [
+        (0.0, GEAR_Y_FERN - BRUECKE_RAND - STUMMEL_LAENGE, ball_center_z),
+        (0.0, GEAR_Y_FERN - BRUECKE_RAND, ball_center_z),
+        (0.0, GEAR_Y_FERN - BRUECKE_RAND, BRUECKE_HOEHE),
+        (0.0, GEAR_Y_NAH + BRUECKE_RAND, BRUECKE_HOEHE),
+        (0.0, GEAR_Y_NAH + BRUECKE_RAND, ball_center_z),
+        (0.0, length, ball_center_z),  # durchgehend bis zur Kugel auf erhöhter Höhe
+    ]
+    bruecke_name = f"Kroepfung_{entry.get('id', '?')}"
+    # Dünnere Achse (Rohrradius nah am bestehenden Rohr statt deutlich dicker)
+    bruecke_mesh = build_mitered_pipe_mesh(bruecke_name, bruecke_pfad, radius=rod_radius * 0.9)
+    bruecke_obj = bpy.data.objects.new(bruecke_name, bruecke_mesh)
+    collection.objects.link(bruecke_obj)
+    bruecke_obj.parent = arm_obj
+    # Transparentes Gold, damit die (dunkle) Mondkugel-Welle darin sichtbar bleibt
+    bruecke_mesh.materials.append(get_or_create_transparent_gold_material())
+    add_bevel_modifier(bruecke_obj)
+
+    # Dünne, dunkle Innenwelle - die "Mondkugel-Welle" selbst - läuft entlang
+    # desselben Pfads, aber dünner, damit sie durch das transparente Gold-
+    # Rohr der Brücke hindurch sichtbar ist.
+    welle_name = f"Mondkugel_Welle_{entry.get('id', '?')}"
+    welle_mesh = build_mitered_pipe_mesh(welle_name, bruecke_pfad, radius=rod_radius * 0.35)
+    welle_obj = bpy.data.objects.new(welle_name, welle_mesh)
+    collection.objects.link(welle_obj)
+    welle_obj.parent = arm_obj
+    welle_mesh.materials.append(moon_material)
+    add_bevel_modifier(welle_obj)
+
+    # Blaue Gegengewichts-Scheibe am Stummel-Ende (Rückseite, "hinter der
+    # Uhr") - analog zum Sonnenzeiger, dessen langem Arm ebenfalls ein
+    # solches Gegengewicht am kurzen Ende gegenübersteht.
+    gegengewicht_name = f"Gegengewicht_{entry.get('id', '?')}"
+    gg_radius = rod_radius * 2.2
+    gg_thickness = rod_radius * 1.1
+    bm_gg = bmesh.new()
+    add_flat_disc(bm_gg, gg_radius, gg_thickness,
+                  (bruecke_pfad[0][0], bruecke_pfad[0][1] - gg_radius, bruecke_pfad[0][2] - gg_thickness / 2.0),
+                  segments=20, material_index=0)
+    bmesh.ops.recalc_face_normals(bm_gg, faces=bm_gg.faces)
+    gg_mesh = bpy.data.meshes.new(gegengewicht_name + "_Mesh")
+    bm_gg.to_mesh(gg_mesh)
+    bm_gg.free()
+    gg_mesh.update()
+    gg_obj = bpy.data.objects.new(gegengewicht_name, gg_mesh)
+    collection.objects.link(gg_obj)
+    gg_obj.parent = arm_obj
+    gg_mesh.materials.append(get_or_create_counterweight_material())
+    add_bevel_modifier(gg_obj)
+
+    # --- 2b) Sonnenrad ('n-zähniges Rad auf der Sonnenzeiger-Welle') - eigene,
+    #     unabhaengige Achse ('Sonnenachse'), an DERSELBEN Stelle wie der Arm
+    #     selbst (konzentrische Wellen), NICHT Kind des Arms. Ebenfalls auf
+    #     Höhe ball_center_z angehoben (Bugfix, s.o.) - vorher lag es zu
+    #     tief (unterhalb des Zifferblatts versteckt, daher "fehlte" es). ---
+    sonnenachse_name = f"Sonnenachse_{entry.get('id', '?')}"
+    sonnenachse_obj = bpy.data.objects.new(sonnenachse_name, None)
+    collection.objects.link(sonnenachse_obj)
+    sonnenachse_obj.location = base_location
+    sonnenachse_obj.rotation_euler = axis_euler
+    animate_spin(sonnenachse_obj, "z", sun_dir, sun_speed, fps)
+
+    sun_gear_name = f"Sonnenrad_{entry.get('id', '?')}"
+    sun_gear_mesh, _ = build_moon_gear_mesh(sun_gear_name, module_sun, n_teeth_sun, GEAR_DICKE, axis='Z')
+    sun_gear_obj = bpy.data.objects.new(sun_gear_name, sun_gear_mesh)
+    collection.objects.link(sun_gear_obj)
+    sun_gear_obj.parent = sonnenachse_obj
+    sun_gear_obj.location = (0.0, 0.0, ball_center_z - R - GEAR_DICKE)
+    sun_gear_mesh.materials.append(brass_material)
+    add_bevel_modifier(sun_gear_obj)
+
+    # Kontrolle Berührpunkt (siehe Herleitung, numerisch verifiziert): beide
+    # Zahnkränze berühren sich exakt dort, wo der Abstand ihrer Kreiszentren
+    # gleich R ist - das gilt unabhängig von der Höhenverschiebung um
+    # ball_center_z (reine Parallelverschiebung, ändert nichts an der
+    # relativen Geometrie): Mondrad-Zahnkranz liegt (Arm-lokal) auf dem Kreis
+    # um (0,R,ball_center_z), Radius R, in der XZ-Ebene -> unterster Punkt
+    # (0,R,ball_center_z-R). Sonnenrad-Zahnkranz liegt auf dem Kreis um
+    # (0,0,ball_center_z-R), Radius R, in der XY-Ebene -> derselbe Punkt
+    # liegt exakt darauf (Abstand von (0,0) zu (0,R) = R).
+
+    # --- 3) Kinematik: allgemeine Planetengetriebe-Formel (Wechsel ins
+    #     mitrotierende Bezugssystem des Arms/Trägers):
+    #       omega_P = omega_C*(1 + N_S/N_P) - (N_S/N_P)*omega_S
+    #     Dem 'Drehachse'-Empty (trägt Kugel UND Mondrad gemeinsam) wird nur
+    #     die ZUSAETZLICHE (relative) Drehzahl omega_P - omega_C gegeben, da
+    #     es als Kind des Arms dessen omega_C bereits automatisch erbt. Bei
+    #     gleicher Zähnezahl (N_S=N_P): omega_P = 2*omega_C - omega_S
+    #     ("Münzen-Paradoxon"). ---
+    omega_C = arm_dir * arm_speed
+    omega_S = sun_dir * sun_speed
+    ratio = n_teeth_sun / n_teeth_moon
+    omega_P = omega_C * (1.0 + ratio) - ratio * omega_S
+    rel = omega_P - omega_C
+    animate_local_spin(drehachse_obj, 1, 1.0 if rel >= 0 else -1.0, abs(rel), fps)
 
     return arm_obj
 
@@ -1613,6 +1976,38 @@ def animate_spin(obj, axis_letter, direction, speed, fps):
 
         fcurve = next(
             (fc for fc in curves if fc.data_path == "rotation_euler" and fc.array_index == z_index),
+            None,
+        )
+        if fcurve is not None:
+            fcurve.extrapolation = 'LINEAR'
+            for keyframe in fcurve.keyframe_points:
+                keyframe.interpolation = 'LINEAR'
+
+
+def animate_local_spin(obj, axis_index, direction, speed, fps):
+    """Wie animate_spin(), aber OHNE die AXIS_ALIGN_EULER-Vorausrichtung -
+    animiert direkt den angegebenen lokalen Euler-Index (0=X, 1=Y, 2=Z).
+    Nötig für 'Drehachse' (Mondkugel-Eigendrehung um die lokale Y-Achse):
+    deren Kinder (Mondrad, Kapsel) sind relativ zu einer UNROTIERTEN
+    lokalen Basis positioniert - eine zusätzliche statische Vor-Rotation
+    (wie sie animate_spin voraussetzt) würde diese Positionen mitverdrehen
+    und die sorgfältig berechnete Getriebegeometrie verschieben."""
+    total_seconds = CYCLE_FRAMES / fps
+    target_angle = direction * speed * BASE_ANGULAR_SPEED * total_seconds
+
+    obj.rotation_mode = 'XYZ'
+    obj.rotation_euler[axis_index] = 0.0
+    obj.keyframe_insert(data_path="rotation_euler", index=axis_index, frame=1)
+    obj.rotation_euler[axis_index] = target_angle
+    obj.keyframe_insert(data_path="rotation_euler", index=axis_index, frame=1 + CYCLE_FRAMES)
+
+    if obj.animation_data and obj.animation_data.action:
+        action = obj.animation_data.action
+        curves = getattr(action, "fcurves", None)
+        if curves is None:
+            curves = getattr(action, "curves", [])
+        fcurve = next(
+            (fc for fc in curves if fc.data_path == "rotation_euler" and fc.array_index == axis_index),
             None,
         )
         if fcurve is not None:
