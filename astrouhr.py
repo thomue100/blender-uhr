@@ -53,6 +53,71 @@ ADDENDUM_COEFF = 1.0  # Zahnkopfhöhe = 1.0 * Modul
 DEDENDUM_COEFF = 1.25  # Zahnfußhöhe = 1.25 * Modul (0.25*Modul Kopfspiel)
 INVOLUTE_SEGMENTS = 6  # Stützpunkte pro Zahnflanke (Glätte der Evolvente)
 
+# --- Weltmaßstab (Weltmaßstab-Einheit -> cm), abgeleitet aus der Sternscheibe ---
+# Die Mesh-Radien im Skript (Zahnrad-Kopfkreise, Zifferblatt-, Sternscheiben-Radius
+# usw.) sind reine, unskalierte Weltmaßstab-Einheiten (SCALE wirkt nur auf die
+# x/y/z-POSITIONEN, nicht auf die Radien selbst - siehe build_gear_object() und
+# build_star_disc_object()). Damit sich reale cm-Wünsche (z.B. "Zahnrad X soll
+# Y cm groß sein") korrekt umrechnen lassen, brauchen wir einen bekannten
+# Referenzwert: Die Sternscheibe (Radius STAR_DISC_RADIUS, siehe unten bei
+# "star_disc" in GEAR_DATA) soll laut Nutzervorgabe real 350 cm Durchmesser haben.
+STAR_DISC_RADIUS = 15.35  # unskalierter Mesh-Radius der Sternscheibe (siehe GEAR_DATA weiter unten)
+STAR_DISC_DIAMETER_CM = 350.0  # gewünschter realer Durchmesser der Sternscheibe
+WORLD_UNITS_PER_CM = (2.0 * STAR_DISC_RADIUS) / STAR_DISC_DIAMETER_CM  # Weltmaßstab-Einheiten pro cm
+
+# --- Sonder-Modul für den "Turm"-Radsatz 7/8/9/10 ---
+# Zahnrad 7 und 10 (je 64 Zähne) sollen - IM VERHÄLTNIS ZUR STERNSCHEIBE (350 cm) -
+# einen Kopfkreis-Durchmesser (= tatsächliche sichtbare Außenkante) von 100 cm
+# haben. Der Ziel-Durchmesser wird daher über WORLD_UNITS_PER_CM aus "echten cm"
+# in Weltmaßstab-Einheiten umgerechnet. Da Modul und Zähnezahl den Kopfkreis-
+# Durchmesser bestimmen (d_addendum = 2*module*(teeth/2 + ADDENDUM_COEFF)), wird
+# der dafür nötige Modul hier direkt algebraisch aufgelöst - über
+# module_for_addendum() käme es sonst zu einer Zirkelabhängigkeit, da GEAR_DATA
+# weiter unten bereits vor der Funktionsdefinition ausgewertet wird.
+# Zahnrad 8 und 9 (je 16 Zähne) kämmen mit 7 bzw. 10 und MÜSSEN denselben Modul
+# verwenden, damit die Verzahnung weiterhin exakt ineinandergreift - sie werden
+# daher automatisch mitskaliert (kein separater Zielwert nötig).
+GEAR_7_10_TARGET_ADDENDUM_DIAMETER_CM = 100.0
+GEAR_7_10_TARGET_ADDENDUM_DIAMETER = GEAR_7_10_TARGET_ADDENDUM_DIAMETER_CM * WORLD_UNITS_PER_CM
+GEAR_MODULE_7_10 = (GEAR_7_10_TARGET_ADDENDUM_DIAMETER / 2.0) / (64 / 2.0 + ADDENDUM_COEFF)
+
+# --- Sonder-Modul für Zahnrad 6 (+ das damit kämmende "abtrieb56") ---
+# Analoges Vorgehen wie bei GEAR_MODULE_7_10: Zahnrad 6 (80 Zähne) soll einen
+# Kopfkreis-Durchmesser von 125 cm haben (im selben, über die Sternscheibe
+# definierten Weltmaßstab). Rad 5 sitzt zwar auf derselben Hohlwelle wie Rad 6,
+# kämmt aber mit Rad 4 (nicht mit Rad 6) und bleibt daher unverändert beim
+# globalen GEAR_MODULE. Nur "abtrieb56" (15 Zähne) kämmt direkt mit Rad 6 und
+# MUSS denselben Modul verwenden.
+GEAR_6_TARGET_ADDENDUM_DIAMETER_CM = 125.0
+GEAR_6_TARGET_ADDENDUM_DIAMETER = GEAR_6_TARGET_ADDENDUM_DIAMETER_CM * WORLD_UNITS_PER_CM
+GEAR_MODULE_6 = (GEAR_6_TARGET_ADDENDUM_DIAMETER / 2.0) / (80 / 2.0 + ADDENDUM_COEFF)
+
+# --- Sonder-Modul für Zahnrad 2 und 5 (+ die damit kämmenden Räder 3 und 4) ---
+# Analoges Vorgehen wie bei GEAR_MODULE_6: Zahnrad 2 UND Zahnrad 5 (je 80 Zähne)
+# sollen jeweils einen Kopfkreis-Durchmesser von 150 cm haben. Da beide dieselbe
+# Zähnezahl UND denselben Ziel-Durchmesser haben, ergibt sich für beide automatisch
+# derselbe Modul - praktisch, denn Rad 3 (kämmt mit Rad 2) und Rad 4 (kämmt mit
+# Rad 5) sitzen ohnehin auf derselben gemeinsamen Welle (Parallelwelle B) und
+# MÜSSEN daher sowieso denselben Modul verwenden, damit beide Eingriffe
+# gleichzeitig (bei identischem Wellenabstand) korrekt funktionieren.
+GEAR_2_5_TARGET_ADDENDUM_DIAMETER_CM = 150.0
+GEAR_2_5_TARGET_ADDENDUM_DIAMETER = GEAR_2_5_TARGET_ADDENDUM_DIAMETER_CM * WORLD_UNITS_PER_CM
+GEAR_MODULE_2_5 = (GEAR_2_5_TARGET_ADDENDUM_DIAMETER / 2.0) / (80 / 2.0 + ADDENDUM_COEFF)
+
+# --- Einheitliche, dünnere Dicke für den hier skalierten Radsatz (2,3,4,5,6,7,8,9,
+# 10, abtrieb56) + proportional dünnere Achsen für genau diesen Bereich ---
+# Alle bisherigen Räder dieser Gruppe hatten "thickness": 0.25 (vor-skaliert) im
+# GEAR_DATA, was einer Weltmaßstab-Dicke von 0.25*SCALE = 1.0 entsprach. Die neue
+# Zieldicke von 2.5 cm wird über WORLD_UNITS_PER_CM/SCALE in denselben
+# vor-skalierten GEAR_DATA-Wert umgerechnet. Damit die massiven Achsen optisch
+# nicht plötzlich viel zu dick neben den nun sehr viel dünneren Rädern wirken,
+# werden ihre Radien (und ggf. Wandstärken) um exakt denselben Faktor verjüngt,
+# um den die Räder dünner wurden (altes/neues Dicken-Verhältnis).
+GEAR_THICKNESS_CM = 2.5
+GEAR_THICKNESS_SCALED = (GEAR_THICKNESS_CM * WORLD_UNITS_PER_CM) / SCALE
+_PREVIOUS_GEAR_THICKNESS_2_10 = 0.25  # bisheriger vor-skalierter thickness-Wert dieser Radgruppe
+AXIS_THIN_RATIO_2_10 = GEAR_THICKNESS_SCALED / _PREVIOUS_GEAR_THICKNESS_2_10
+
 # --- Zifferblatt + Sonnenzeiger (Lübecker-Uhr-Stil) ---
 # Falls diese Bilddatei neben dem Skript liegt, wird sie als Zifferblatt-Textur
 # verwendet; sonst wird ersatzweise ein einfarbiges dunkelblaues Zifferblatt erzeugt.
@@ -125,60 +190,75 @@ GEAR_DATA = [
     # --- Zentraler "Turm" (koaxial: 10 -> 7 -> 6/5 -> 2, alle bei x=0,y=0) ---
     # Rad 10: sitzt auf der innersten, massiven Welle (eigene Welle).
     {"type": "gear", "group": None, "x": 0, "y": 0, "z": 0, "dir": SHAFT_10_DIR, "speed": SHAFT_10_SPEED, "axis": "z",
-     "id": 10, "teeth": 64, "thickness": 0.25, "spoked": True},
+     "id": 10, "teeth": 64, "thickness": GEAR_THICKNESS_SCALED, "spoked": True, "module": GEAR_MODULE_7_10},
     # Rad 7: eigenständige, einfache Welle (nicht Teil der Hohlwellen-Verschachtelung), kämmt mit 8.
     {"type": "gear", "group": None, "x": 0, "y": 0, "z": 1, "dir": SHAFT_10_DIR, "speed": SHAFT_10_SPEED, "axis": "z",
-     "id": 7, "teeth": 64, "thickness": 0.25, "spoked": True},
+     "id": 7, "teeth": 64, "thickness": GEAR_THICKNESS_SCALED, "spoked": True, "module": GEAR_MODULE_7_10},
     # Rad 6 + Rad 5: gemeinsame Hohlwelle, die die Welle von Rad 10 umhüllt.
     {"type": "gear", "group": None, "x": 0, "y": 0, "z": 2, "dir": SHAFT_56_DIR, "speed": SHAFT_56_SPEED, "axis": "z",
-     "id": 6, "teeth": 80, "thickness": 0.25, "spoked": True},
+     "id": 6, "teeth": 80, "thickness": GEAR_THICKNESS_SCALED, "spoked": True, "module": GEAR_MODULE_6},
     {"type": "gear", "group": None, "x": 0, "y": 0, "z": 3, "dir": SHAFT_56_DIR, "speed": SHAFT_56_SPEED, "axis": "z",
-     "id": 5, "teeth": 80, "thickness": 0.25, "spoked": True},
+     "id": 5, "teeth": 80, "thickness": GEAR_THICKNESS_SCALED, "spoked": True, "module": GEAR_MODULE_2_5},
     # Rad 2: eigene (weitere/äußere) Hohlwelle, umhüllt die Hohlwelle von 6/5.
     {"type": "gear", "group": None, "x": 0, "y": 0, "z": 4, "dir": SHAFT_56_DIR, "speed": SHAFT_56_SPEED, "axis": "z",
-     "id": 2, "teeth": 80, "thickness": 0.25, "spoked": True},
+     "id": 2, "teeth": 80, "thickness": GEAR_THICKNESS_SCALED, "spoked": True, "module": GEAR_MODULE_2_5},
 
     # --- Parallelwelle A: 9 (kämmt mit 10) + 8 (gemeinsame Welle mit 9, kämmt mit 7) ---
-    # y-Abstand = (r_pitch(16) + r_pitch(64)) / SCALE = (3.6 + 14.4) / 4 = 4.5
-    {"type": "gear", "group": None, "x": 0, "y": -4.5, "z": 0, "dir": -SHAFT_10_DIR, "speed": SHAFT_10_SPEED * 4,
-     "axis": "z", "id": 9, "teeth": 16, "thickness": 0.25},
-    {"type": "gear", "group": None, "x": 0, "y": -4.5, "z": 1, "dir": -SHAFT_10_DIR, "speed": SHAFT_10_SPEED * 4,
-     "axis": "z", "id": 8, "teeth": 16, "thickness": 0.25},
+    # 8 und 9 müssen mit dem NEUEN Modul von 7/10 (GEAR_MODULE_7_10) laufen, sonst
+    # greifen die Zähne nicht mehr sauber ineinander.
+    # y-Abstand = (r_pitch(16) + r_pitch(64)) / SCALE
+    #           = GEAR_MODULE_7_10 * (16 + 64) / 2 / SCALE
+    {"type": "gear", "group": None, "x": 0, "y": -(GEAR_MODULE_7_10 * (16 + 64) / 2.0) / SCALE, "z": 0,
+     "dir": -SHAFT_10_DIR, "speed": SHAFT_10_SPEED * 4,
+     "axis": "z", "id": 9, "teeth": 16, "thickness": GEAR_THICKNESS_SCALED, "module": GEAR_MODULE_7_10},
+    {"type": "gear", "group": None, "x": 0, "y": -(GEAR_MODULE_7_10 * (16 + 64) / 2.0) / SCALE, "z": 1,
+     "dir": -SHAFT_10_DIR, "speed": SHAFT_10_SPEED * 4,
+     "axis": "z", "id": 8, "teeth": 16, "thickness": GEAR_THICKNESS_SCALED, "module": GEAR_MODULE_7_10},
 
     # --- Parallelwelle B: 4 (kämmt mit 5) + 3 (gemeinsame Welle mit 4, kämmt mit 2) ---
-    # y-Abstand = (r_pitch(16) + r_pitch(80)) / SCALE = (3.6 + 18.0) / 4 = 5.4
-    {"type": "gear", "group": None, "x": 0, "y": -5.4, "z": 3, "dir": -SHAFT_56_DIR, "speed": SHAFT_56_SPEED * 5,
-     "axis": "z", "id": 4, "teeth": 16, "thickness": 0.25},
-    {"type": "gear", "group": None, "x": 0, "y": -5.4, "z": 4, "dir": -SHAFT_56_DIR, "speed": SHAFT_56_SPEED * 5,
-     "axis": "z", "id": 3, "teeth": 16, "thickness": 0.25},
+    # 3 und 4 müssen mit dem NEUEN Modul von 2/5 (GEAR_MODULE_2_5) laufen, sonst
+    # greifen die Zähne nicht mehr sauber ineinander.
+    # y-Abstand = (r_pitch(16) + r_pitch(80)) / SCALE
+    #           = GEAR_MODULE_2_5 * (16 + 80) / 2 / SCALE
+    {"type": "gear", "group": None, "x": 0, "y": -(GEAR_MODULE_2_5 * (16 + 80) / 2.0) / SCALE, "z": 3,
+     "dir": -SHAFT_56_DIR, "speed": SHAFT_56_SPEED * 5,
+     "axis": "z", "id": 4, "teeth": 16, "thickness": GEAR_THICKNESS_SCALED, "module": GEAR_MODULE_2_5},
+    {"type": "gear", "group": None, "x": 0, "y": -(GEAR_MODULE_2_5 * (16 + 80) / 2.0) / SCALE, "z": 4,
+     "dir": -SHAFT_56_DIR, "speed": SHAFT_56_SPEED * 5,
+     "axis": "z", "id": 3, "teeth": 16, "thickness": GEAR_THICKNESS_SCALED, "module": GEAR_MODULE_2_5},
 
     # --- Sichtbare (teil-transparente) Hohlwellen-Objekte fuer den zentralen Turm ---
     # Innerste, massive Welle von Rad 10. (etwas duenner als zuvor, passend
     # zum neuen, filigraneren Mondphasen-Differenzialgetriebe)
-    {"type": "axis", "x": 0, "y": 0, "z": -0.4, "length": 4.8, "r": 0.10, "hollow": False, "id": "10"},
+    {"type": "axis", "x": 0, "y": 0, "z": -0.4, "length": 4.8, "r": 0.10 * AXIS_THIN_RATIO_2_10, "hollow": False,
+     "id": "10"},
     # Hohlwelle, die die Welle von Rad 10 umhuellt; traegt Rad 6 + 5.
-    {"type": "axis", "x": 0, "y": 0, "z": -0.4, "length": 4.8, "r": 0.25, "wall_thickness": 0.10, "hollow": True,
-     "id": "56"},
+    {"type": "axis", "x": 0, "y": 0, "z": -0.4, "length": 4.8, "r": 0.25 * AXIS_THIN_RATIO_2_10,
+     "wall_thickness": 0.10 * AXIS_THIN_RATIO_2_10, "hollow": True, "id": "56"},
 
     # Kleines Zahnrad (15 Zaehne), das mit dem MITTLEREN der drei oberen
     # Kleines Zahnrad (15 Zaehne), das mit dem HINTERSTEN der grossen
     # Zahnraeder (Rad 6, z=2, teilt die 56-Welle mit Rad 5) in Eingriff steht -
-    # auf einer eigenen, neuen Welle.
-    # y-Abstand exakt aus den Waelzkreisradien berechnet: (18.0+3.375)/4 = 5.34375
-    {"type": "gear", "group": None, "x": 0, "y": 5.34375, "z": 2, "dir": -SHAFT_56_DIR,
-     "speed": SHAFT_56_SPEED * (80.0 / 15.0), "axis": "z", "id": "abtrieb56", "teeth": 15, "thickness": 0.25},
+    # auf einer eigenen, neuen Welle. Muss denselben Modul wie Rad 6
+    # (GEAR_MODULE_6) verwenden, sonst greifen die Zähne nicht mehr ineinander.
+    # y-Abstand = (r_pitch(80) + r_pitch(15)) / SCALE
+    #           = GEAR_MODULE_6 * (80 + 15) / 2 / SCALE
+    {"type": "gear", "group": None, "x": 0, "y": (GEAR_MODULE_6 * (80 + 15) / 2.0) / SCALE, "z": 2,
+     "dir": -SHAFT_56_DIR, "speed": SHAFT_56_SPEED * (80.0 / 15.0), "axis": "z", "id": "abtrieb56", "teeth": 15,
+     "thickness": GEAR_THICKNESS_SCALED, "module": GEAR_MODULE_6},
 
     # Kurzer, massiver Wellenstummel hinter diesem Rad, der "nach hinten
     # heraus" ragt (gegenueber vom Zifferblatt) - rein dekorativ, deutet die
     # Antriebswelle dieses Abtriebsrads an.
-    {"type": "axis", "x": 0, "y": 5.34375, "z": 1.55, "length": 0.7,
-     "r": 0.09, "hollow": False, "id": "abtrieb56_welle"},
+    {"type": "axis", "x": 0, "y": (GEAR_MODULE_6 * (80 + 15) / 2.0) / SCALE, "z": 1.55, "length": 0.7,
+     "r": 0.09 * AXIS_THIN_RATIO_2_10, "hollow": False, "id": "abtrieb56_welle"},
     # Aeussere Hohlwelle darueber, umhuellt die Welle von 6/5; traegt Rad 2.
-    {"type": "axis", "x": 0, "y": 0, "z": -0.4, "length": 4.8, "r": 0.45, "wall_thickness": 0.15, "hollow": True,
-     "id": "2"},
+    {"type": "axis", "x": 0, "y": 0, "z": -0.4, "length": 4.8, "r": 0.45 * AXIS_THIN_RATIO_2_10,
+     "wall_thickness": 0.15 * AXIS_THIN_RATIO_2_10, "hollow": True, "id": "2"},
 
     # --- Zifferblatt + Sonnenzeiger (verdeckt das Räderwerk, wie bei einer echten Uhr) ---
-    # Zifferblatt: ruht knapp über Rad 2 (Kopfkreis ~18.45), deckt den ganzen Turm ab.
+    # Zifferblatt: ruht knapp über Rad 2 (Kopfkreis jetzt kleiner, ~150cm-Zielgröße
+    # in Weltmaßstab-Einheiten), deckt den ganzen Turm ab.
     {"type": "dial", "id": "zifferblatt", "x": 0, "y": 0, "z": 4.375, "radius": 19.0},
     # Sonnenzeiger: sitzt sichtbar auf dem Zifferblatt, wird aber bewusst über
     # SHAFT_56_DIR/SPEED angetrieben - exakt dieselbe Achse wie Rad 6 (+5).
@@ -199,18 +279,18 @@ GEAR_DATA = [
     # Sichtbare gemeinsame Achse fuer Radpaar 3+4 ("vordere Gruppe", dem
     # Zifferblatt zugewandt, z=3..4) - nur die Achse selbst, keine Platine/
     # Strebe/Bodenplatte.
-    {"type": "axis", "id": "3_4", "x": 0, "y": -5.4, "z": 2.9, "length": 1.5,
-     "r": 0.075, "hollow": False, "steel": True},
+    {"type": "axis", "id": "3_4", "x": 0, "y": -(GEAR_MODULE_2_5 * (16 + 80) / 2.0) / SCALE, "z": 2.9, "length": 1.5,
+     "r": 0.075 * AXIS_THIN_RATIO_2_10, "hollow": False, "steel": True},
 
     # Sichtbare gemeinsame Achse fuer Radpaar 8+9 ("hintere Gruppe", z=0..1).
-    {"type": "axis", "id": "8_9", "x": 0, "y": -4.5, "z": -0.1, "length": 1.5,
-     "r": 0.075, "hollow": False, "steel": True},
+    {"type": "axis", "id": "8_9", "x": 0, "y": -(GEAR_MODULE_7_10 * (16 + 64) / 2.0) / SCALE, "z": -0.1,
+     "length": 1.5, "r": 0.075 * AXIS_THIN_RATIO_2_10, "hollow": False, "steel": True},
 
     # --- Sternscheibe: sitzt knapp unter dem Zifferblatt (zwischen Zifferblatt
     # und den Haupt-Zahnraedern), Radius etwas kleiner als das Zifferblatt,
     # damit der aeussere Ring mit den roemischen Ziffern sichtbar bleibt.
     {"type": "star_disc", "id": "sternscheibe", "x": 0, "y": 0, "z": 4.40,
-     "radius": 15.35, "image": "sternhimmel.png"},
+     "radius": STAR_DISC_RADIUS, "image": "sternhimmel.png"},
 
     # 12 der 13 Tierkreiszeichen der Luebecker Uhr (Skorpion fehlt hier bewusst
     # - er ist fest in sternhimmel.png aufgemalt und braucht daher keine
@@ -2039,7 +2119,12 @@ def build_gear_object(entry, collection, material, fps):
     # r_pitch (Wälzkreis) ist die Grundlage für den korrekten Mittenabstand kämmender
     # Räder (Positionen in GEAR_DATA sind entsprechend darauf abgestimmt).
     # r_addendum (Kopfkreis) ist der tatsächliche, sichtbare Außenradius.
-    r_pitch, r_base, r_addendum, r_dedendum = compute_gear_radii(GEAR_MODULE, teeth)
+    # Normalerweise gilt für ALLE Räder derselbe GEAR_MODULE (garantiert korrektes
+    # Ineinandergreifen). Einzelne Räder (z.B. 7/8/9/10) können das per "module" in
+    # ihrem GEAR_DATA-Eintrag überschreiben - kämmende Räder müssen dann konsistent
+    # denselben überschriebenen Modul verwenden.
+    module = float(entry.get("module", GEAR_MODULE))
+    r_pitch, r_base, r_addendum, r_dedendum = compute_gear_radii(module, teeth)
     outer_radius = r_addendum
     # -----------------------------------------------
 
@@ -2051,7 +2136,7 @@ def build_gear_object(entry, collection, material, fps):
 
     name = f"Zahnrad_{entry.get('id', '?')}"
     spoked = bool(entry.get("spoked", False))
-    mesh = build_gear_mesh(name, GEAR_MODULE, teeth, thickness, outer_radius_dev=outer_radius,
+    mesh = build_gear_mesh(name, module, teeth, thickness, outer_radius_dev=outer_radius,
                            spoked=spoked)
 
     obj = bpy.data.objects.new(name, mesh)
@@ -2149,9 +2234,10 @@ def main():
     print(f"[Messingzahnraeder] {len(created)} Objekte erzeugt in Collection '{COLLECTION_NAME}'.")
     for obj, entry in zip(created, [e for e in gear_data if e.get("type") == "gear"]):
         teeth = int(entry["teeth"])
-        r_pitch, r_base, r_addendum, r_dedendum = compute_gear_radii(GEAR_MODULE, teeth)
-        print(f"  - {obj.name}: {teeth} Zähne -> Wälzkreis {r_pitch:.2f} / Kopfkreis {r_addendum:.2f}, "
-              f"speed={entry.get('speed')}, dir={entry.get('dir')}")
+        module = float(entry.get("module", GEAR_MODULE))
+        r_pitch, r_base, r_addendum, r_dedendum = compute_gear_radii(module, teeth)
+        print(f"  - {obj.name}: {teeth} Zähne (Modul {module:.4f}) -> Wälzkreis {r_pitch:.2f} / "
+              f"Kopfkreis-Durchmesser {2 * r_addendum:.2f}, speed={entry.get('speed')}, dir={entry.get('dir')}")
 
     # WICHTIG: Zeitleiste auf Frame 1 setzen. Bei Frame 1 ist die Rotation
     # ALLER animierten Objekte exakt 0 - das entspricht 1:1 den in GEAR_DATA
