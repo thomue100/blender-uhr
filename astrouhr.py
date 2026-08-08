@@ -143,6 +143,17 @@ SHAFT_10_SPEED = 1.6
 MOON_MATERIAL_NAME = "Mondkugel_Schwarzlack"
 GEGENGEWICHT_MATERIAL_NAME = "Zeiger_Gegengewicht_Blau"
 
+# --- Z-Fighting-Fix für die Tierkreisfiguren ---
+# Alle 12 Figuren-Bildebenen liegen (bei angle_deg-Design-Pose, Frame 1) exakt
+# koplanar auf derselben lokalen Höhe über der Sternscheibe. Da benachbarte
+# Figuren bei nur 30° Abstand am Rand ueberlappen koennen, kommt es an diesen
+# Stellen zu Z-Fighting (flackernde/schwarze Flecken, siehe Nutzer-Feedback:
+# rot markierte Artefakte im Renderbild). Fix: jede Figur bekommt eine winzige,
+# aber eindeutige zusaetzliche Hoehe (Reihenfolge = Reihenfolge in GEAR_DATA),
+# sodass die Tiefensortierung nie mehrdeutig ist - visuell nicht wahrnehmbar,
+# behebt aber das Flackern zuverlaessig.
+ZODIAC_FIGURE_Z_STACK_STEP = 0.01
+
 # --- Planetengetriebe an der Mondzeiger-Spitze (siehe "Getriebe.jpg") ---
 # Kleines, separates Modul für die beiden filigranen 24-zähnigen Getrieberäder
 # (Zentralrad auf der Sonnenzeiger-Welle + Rad auf der Mondkugelwelle) - viel
@@ -377,6 +388,16 @@ def clear_collection(collection):
             bpy.data.meshes.remove(mesh)
 
 
+def _set_solid_display_color(mat, rgba):
+    """Setzt zusaetzlich zur (node-basierten) Base Color auch `material.diffuse_
+    color` - die separate "Viewport-Anzeigefarbe", die NUR im Solid-Shading-
+    Modus verwendet wird (Material Preview/Rendered lesen stattdessen die
+    Shader-Nodes). Ohne diese wuerden im Solid-Modus alle Objekte einheitlich
+    grau erscheinen, egal welches Node-Material sie haben."""
+    mat.diffuse_color = rgba
+    return mat
+
+
 def get_or_create_brass_material():
     if MATERIAL_NAME in bpy.data.materials:
         return bpy.data.materials[MATERIAL_NAME]
@@ -390,6 +411,7 @@ def get_or_create_brass_material():
         bsdf.inputs["Roughness"].default_value = 0.32
         if "Specular IOR Level" in bsdf.inputs:  # Blender 4.x Benennung
             bsdf.inputs["Specular IOR Level"].default_value = 0.6
+    _set_solid_display_color(mat, (0.72, 0.52, 0.18, 1.0))
     return mat
 
 
@@ -410,6 +432,7 @@ def get_or_create_steel_material():
         bsdf.inputs["Roughness"].default_value = 0.45  # etwas matter als poliertes Messing
         if "Specular IOR Level" in bsdf.inputs:
             bsdf.inputs["Specular IOR Level"].default_value = 0.5
+    _set_solid_display_color(mat, (0.42, 0.43, 0.45, 1.0))
     return mat
 
 
@@ -429,6 +452,7 @@ def get_or_create_moon_material():
         bsdf.inputs["Roughness"].default_value = 0.15  # glänzender Lack
         if "Specular IOR Level" in bsdf.inputs:
             bsdf.inputs["Specular IOR Level"].default_value = 0.6
+    _set_solid_display_color(mat, (0.008, 0.008, 0.01, 1.0))
     return mat
 
 
@@ -447,6 +471,7 @@ def get_or_create_counterweight_material():
         bsdf.inputs["Roughness"].default_value = 0.3
         if "Specular IOR Level" in bsdf.inputs:
             bsdf.inputs["Specular IOR Level"].default_value = 0.5
+    _set_solid_display_color(mat, (0.55, 0.76, 0.94, 1.0))
     return mat
 
 
@@ -466,6 +491,7 @@ def get_or_create_transparent_gold_material():
         bsdf.inputs["Metallic"].default_value = 0.9
         bsdf.inputs["Roughness"].default_value = 0.2
         bsdf.inputs["Alpha"].default_value = 0.35
+    _set_solid_display_color(mat, (0.85, 0.65, 0.13, 0.35))
     return mat
 
 
@@ -482,6 +508,7 @@ def get_or_create_transparent_material():
         bsdf.inputs["Metallic"].default_value = 0.8
         bsdf.inputs["Roughness"].default_value = 0.2
         bsdf.inputs["Alpha"].default_value = 0.35  # Transparenz-Grad (0 = unsichtbar, 1 = opak)
+    _set_solid_display_color(mat, (0.8, 0.8, 0.9, 0.35))
     return mat
 
 
@@ -566,6 +593,9 @@ def get_or_create_figure_material(image_filename):
             bsdf.inputs["Roughness"].default_value = 0.35
 
     _figure_material_cache[image_filename] = (mat, aspect_ratio)
+    # Solid-Anzeigefarbe: repraesentatives Gold (kann die Bildtextur selbst
+    # natuerlich nicht abbilden - die sieht man nur in Material Preview/Rendered).
+    _set_solid_display_color(mat, (0.83, 0.68, 0.21, 1.0))
     return mat, aspect_ratio
 
 
@@ -616,6 +646,9 @@ def get_or_create_dial_material():
             bsdf.inputs["Base Color"].default_value = (0.06, 0.09, 0.17, 1.0)  # dunkelblau, wie im Referenzbild
             bsdf.inputs["Roughness"].default_value = 0.5
             bsdf.inputs["Metallic"].default_value = 0.0
+    # Solid-Anzeigefarbe: repraesentatives Dunkelblau (kann die Bildtextur
+    # selbst nicht abbilden - die sieht man nur in Material Preview/Rendered).
+    _set_solid_display_color(mat, (0.06, 0.09, 0.17, 1.0))
     return mat
 
 
@@ -871,6 +904,7 @@ def get_or_create_axle_steel_material():
         bsdf.inputs["Roughness"].default_value = 0.30  # etwas glaenzender (poliertes Achsenstahl)
         if "Specular IOR Level" in bsdf.inputs:
             bsdf.inputs["Specular IOR Level"].default_value = 0.55
+    _set_solid_display_color(mat, (0.30, 0.32, 0.36, 1.0))
     return mat
 
 
@@ -923,6 +957,7 @@ def get_or_create_star_disc_material():
         bsdf.inputs["Base Color"].default_value = (0.03, 0.07, 0.22, 1.0)
         bsdf.inputs["Metallic"].default_value = 0.0
         bsdf.inputs["Roughness"].default_value = 0.4
+    _set_solid_display_color(mat, (0.03, 0.07, 0.22, 1.0))
     return mat
 
 
@@ -1679,7 +1714,7 @@ def build_zodiac_figure_mesh(name, height, aspect_ratio, vertical_anchor="bottom
     return mesh
 
 
-def build_zodiac_figure_object(entry, collection, fps, parent_obj, parent_dir, parent_speed):
+def build_zodiac_figure_object(entry, collection, fps, parent_obj, parent_dir, parent_speed, stack_index=0):
     """Baut eine Tierkreisfigur (aus dem mitgelieferten PNG-Bild) als KIND-
     Objekt der Sternscheibe und sorgt für die "schwerkraftgefuehrte" aufrechte
     Haltung:
@@ -1709,6 +1744,11 @@ def build_zodiac_figure_object(entry, collection, fps, parent_obj, parent_dir, p
     STATISCHEN Korrekturwinkel (in Grad, um die lokale Z-Achse) vorgeben -
     dieser wird direkt ins Mesh gebacken (nicht mit-animiert), sodass die
     Gegenrotation unabhaengig davon exakt aufgeht.
+
+    Z-FIGHTING: `stack_index` (Reihenfolge in GEAR_DATA) sorgt fuer eine
+    winzige, eindeutige Zusatzhoehe pro Figur (siehe ZODIAC_FIGURE_Z_STACK_STEP)
+    - verhindert flackernde/schwarze Artefakte an ueberlappenden Bildkanten
+    benachbarter Figuren.
     """
     orbit_radius = float(entry.get("orbit_radius", 12.0))
     angle_deg = float(entry.get("angle_deg", 0.0))
@@ -1746,9 +1786,11 @@ def build_zodiac_figure_object(entry, collection, fps, parent_obj, parent_dir, p
 
     # Position IM LOKALEN Koordinatensystem der Sternscheibe (nicht *SCALE,
     # da die Scheibe selbst schon in "finalen" Welt-Einheiten gebaut ist -
-    # dieselbe Konvention wie bei der Mondzeiger-Kapsel).
+    # dieselbe Konvention wie bei der Mondzeiger-Kapsel). Der stack_index-Anteil
+    # verhindert Z-Fighting zwischen ueberlappenden Nachbarfiguren (siehe Docstring).
     obj.location = (orbit_radius * math.cos(angle) + x_offset,
-                    orbit_radius * math.sin(angle) + y_offset, 0.05)
+                    orbit_radius * math.sin(angle) + y_offset,
+                    0.05 + stack_index * ZODIAC_FIGURE_Z_STACK_STEP)
     obj.rotation_euler = (0.0, 0.0, 0.0)
 
     mesh.materials.append(material)
@@ -2166,6 +2208,170 @@ def build_gear_object(entry, collection, material, fps):
 
 
 # ============================================================
+# CAD-STANDARDANSICHT (Kamera + Licht + Viewport)
+# ============================================================
+# Grundidee/Formeln fuer die orthografische Kamera stammen urspruenglich aus
+# einer Nutzer-Vorlage (klassischer "true isometric" CAD-Winkel: 45deg um Z,
+# atan(1/sqrt(2)) ~= 35.264deg um X). Der Elevationswinkel wurde bewusst auf
+# einen flacheren Standardwert (siehe elevation_deg-Parameter unten) gesenkt,
+# damit die senkrechten Wellen dieses Modells seitlich sichtbar werden statt
+# von der grossen, flachen Zifferblatt-/Sternscheiben-Flaeche verdeckt zu
+# werden (siehe Docstring von build_isometric_default_view). ortho_scale,
+# Kameraabstand und Clipping-Distanzen werden NICHT fest verdrahtet, sondern
+# aus der tatsaechlichen Weltraum-Bounding-Box aller erzeugten Objekte
+# berechnet - noetig, weil dieses Modell (Weltmaßstab-Einheiten, SCALE=4,
+# mehrere Meter "Durchmesser") eine ganz andere Groessenordnung hat als ein
+# einfaches Beispielobjekt.
+
+def compute_scene_bounds(objects):
+    """Achsenausgerichtete Weltraum-Bounding-Box ueber alle Mesh-Objekte."""
+    inf = math.inf
+    min_co = mathutils.Vector((inf, inf, inf))
+    max_co = mathutils.Vector((-inf, -inf, -inf))
+    found = False
+    for obj in objects:
+        if obj is None or obj.type != 'MESH':
+            continue
+        for corner in obj.bound_box:
+            world_co = obj.matrix_world @ mathutils.Vector(corner)
+            min_co.x = min(min_co.x, world_co.x)
+            min_co.y = min(min_co.y, world_co.y)
+            min_co.z = min(min_co.z, world_co.z)
+            max_co.x = max(max_co.x, world_co.x)
+            max_co.y = max(max_co.y, world_co.y)
+            max_co.z = max(max_co.z, world_co.z)
+            found = True
+    if not found:
+        # Fallback, falls (theoretisch) keine Mesh-Objekte existieren.
+        return mathutils.Vector((-1, -1, -1)), mathutils.Vector((1, 1, 1))
+    return min_co, max_co
+
+
+def build_isometric_default_view(created, sun_energy=3.5, margin_factor=1.15, xray_alpha=0.55,
+                                 elevation_deg=12.0, azimuth_deg=45.0):
+    """Richtet eine orthografische Kamera ein, setzt sie als aktive Szenenkamera,
+    fuegt (falls noch keine Lichtquelle existiert) eine Sonne hinzu und
+    schaltet alle offenen 3D-Viewports in eine CAD-typische Darstellung:
+    Solid-Shading mit den (per `_set_solid_display_color` gesetzten)
+    Materialfarben PLUS Roentgen-/X-Ray-Transparenz - das ist dann die
+    Ansicht, die beim Oeffnen/Ausfuehren des Skripts sofort zu sehen ist.
+
+    `elevation_deg` = Blickwinkel ÜBER DEM HORIZONT (0° = exakt waagerecht/
+    Augenhoehe, 90° = senkrecht von oben). WICHTIG: das ist NICHT direkt die
+    Kamera-Rotation um die lokale X-Achse - eine unrotierte Blender-Kamera
+    blickt bereits exakt senkrecht nach unten (entlang -Z), daher gilt
+    rotation.x = radians(90 - elevation_deg). "Wahre Isometrie" entspricht
+    elevation_deg=35.264 (rotation.x=54.7356°) - das ist der klassische CAD-
+    Standardwinkel, der aber bei DIESEM Modell fast senkrecht auf das riesige,
+    flache Zifferblatt/die Sternscheibe (Durchmesser 30-38 Weltmaßstab-
+    Einheiten) herabblickt und das Uhrwerk darunter dadurch fast vollstaendig
+    verdeckt bzw. auf einen winzigen Fleck in Bildmitte schrumpfen laesst -
+    unabhaengig vom Azimut.
+
+    BLICKWINKEL-STANDARD DIESES MODELLS (elevation_deg=12 statt 35.264): Alle
+    Wellen laufen senkrecht (Z-Achse). Ein FLACHERER Blickwinkel (nahe am
+    Horizont) zeigt sie seitlich, mit sichtbarer Laenge, und die einzelnen
+    Zahnraeder als leicht gekippte, deutlich unterscheidbare Ellipsen mit
+    erkennbarer Dicke dahinter - aehnlich der vom Nutzer verlinkten
+    technischen Darstellung der "Sternscheibe: Getriebetechnische Umsetzung"
+    (dort per Kegelradpaar mit quer verlaufender Welle - dieses Skript baut
+    aktuell nur Stirnraeder auf parallelen/koaxialen Z-Wellen, daher lassen
+    sich gekreuzte Wellen wie im Vorbild nicht 1:1 nachbilden; der flache
+    Blickwinkel erzeugt aber denselben Effekt: Wellenlaenge und Zahnrad-Dicke
+    werden sichtbar statt verdeckt).
+
+    WARUM X-RAY: Zifferblatt und Sternscheibe sind (Durchmesser 30-38
+    Weltmaßstab-Einheiten) um ein Vielfaches groesser als der kompakte
+    Zahnradturm darunter (nur noch wenige Einheiten Durchmesser, seit die
+    Zahnraeder auf reale cm-Zielgroessen skaliert wurden) - sie wuerden das
+    Uhrwerk sonst aus JEDEM Blickwinkel komplett verdecken. Mit X-Ray bleiben
+    Zifferblatt/Sternscheibe als Silhouette erkennbar, das Getriebe darunter
+    wird aber gleichzeitig sichtbar (klassische CAD-Baugruppenansicht, wie
+    in SolidWorks/Fusion360).
+
+    ortho_scale, Kameraabstand und Clipping werden aus der tatsaechlichen
+    Bounding-Box von `created` berechnet, damit das komplette Uhrwerk-Modell
+    unabhaengig von zukuenftigen Groessenaenderungen (Zahnrad-Skalierung etc.)
+    immer vollstaendig und mittig im Bild sitzt.
+    """
+    bpy.context.view_layer.update()  # matrix_world aller (ggf. geparenteten) Objekte aktualisieren
+
+    min_co, max_co = compute_scene_bounds(created)
+    center = (min_co + max_co) / 2.0
+    size = max_co - min_co
+    diagonal = size.length
+
+    # --- Blickwinkel: elevation_deg ist "ueber dem Horizont" (siehe Docstring),
+    # daher rotation.x = 90deg - elevation_deg (nicht direkt elevation_deg!). ---
+    iso_rot_x = math.radians(90.0 - elevation_deg)
+    iso_rot_y = 0.0
+    iso_rot_z = math.radians(azimuth_deg)
+    rot_matrix = mathutils.Euler((iso_rot_x, iso_rot_y, iso_rot_z), 'XYZ').to_matrix()
+    cam_right = rot_matrix @ mathutils.Vector((1.0, 0.0, 0.0))
+    cam_up = rot_matrix @ mathutils.Vector((0.0, 1.0, 0.0))
+    cam_forward = rot_matrix @ mathutils.Vector((0.0, 0.0, -1.0))  # Blender-Kamera blickt lokal -Z
+
+    # Projektion aller 8 Bounding-Box-Ecken auf die Kamera-Ebene (rechts/oben),
+    # damit ortho_scale wirklich exakt passt - unabhaengig von der Modellgroesse.
+    half_width = 0.0
+    half_height = 0.0
+    for cx in (min_co.x, max_co.x):
+        for cy in (min_co.y, max_co.y):
+            for cz in (min_co.z, max_co.z):
+                offset = mathutils.Vector((cx, cy, cz)) - center
+                half_width = max(half_width, abs(offset.dot(cam_right)))
+                half_height = max(half_height, abs(offset.dot(cam_up)))
+
+    ortho_scale = max(half_width, half_height) * 2.0 * margin_factor
+    distance = diagonal * 2.0 + 20.0  # großzügiger Sicherheitsabstand
+
+    cam_data = bpy.data.cameras.new(name="IsoCamData")
+    cam_data.type = 'ORTHO'
+    cam_data.ortho_scale = ortho_scale
+    cam_data.clip_start = 0.1
+    cam_data.clip_end = distance * 3.0
+
+    cam_obj = bpy.data.objects.new(name="IsoCam", object_data=cam_data)
+    bpy.context.collection.objects.link(cam_obj)
+    cam_obj.rotation_euler = (iso_rot_x, iso_rot_y, iso_rot_z)
+    cam_obj.location = center - cam_forward * distance
+
+    bpy.context.scene.camera = cam_obj
+
+    # --- Beleuchtung: nur hinzufuegen, falls die Szene noch keine hat ---
+    if not any(obj.type == 'LIGHT' for obj in bpy.context.scene.objects):
+        sun_data = bpy.data.lights.new(name="IsoSun", type='SUN')
+        sun_data.energy = sun_energy
+        sun_obj = bpy.data.objects.new(name="IsoSun", object_data=sun_data)
+        bpy.context.collection.objects.link(sun_obj)
+        # Kommt schraeg von "vorne-oben-rechts" (aehnlich der Kamera), wirft
+        # dadurch angenehme Schlagschatten auf das Messing-/Stahl-Zahnwerk.
+        sun_obj.rotation_euler = (math.radians(55.0), 0.0, math.radians(35.0))
+        sun_obj.location = center + mathutils.Vector((distance * 0.3, -distance * 0.3, distance * 0.5))
+
+    # --- Alle offenen 3D-Viewports auf Kamera-Ansicht + CAD-Baugruppen-Look:
+    # Solid-Shading mit Materialfarben, PLUS X-Ray, damit das Uhrwerk durch
+    # Zifferblatt/Sternscheibe hindurch sichtbar bleibt (siehe Docstring).
+    for window in bpy.context.window_manager.windows:
+        for area in window.screen.areas:
+            if area.type != 'VIEW_3D':
+                continue
+            for space in area.spaces:
+                if space.type != 'VIEW_3D':
+                    continue
+                space.region_3d.view_perspective = 'CAMERA'
+                space.shading.type = 'SOLID'
+                space.shading.color_type = 'MATERIAL'
+                space.shading.show_xray = True
+                space.shading.xray_alpha = xray_alpha
+
+    print(f"[Standardansicht] Kamera '{cam_obj.name}' eingerichtet "
+          f"(Elevation={elevation_deg:.1f}°, Azimut={azimuth_deg:.1f}°, "
+          f"ortho_scale={ortho_scale:.2f}, Distanz={distance:.2f}).")
+    return cam_obj
+
+
+# ============================================================
 # HAUPTPROGRAMM
 # ============================================================
 
@@ -2189,6 +2395,7 @@ def main():
     created = []
     named_objects = {}  # id -> Objekt (fuer Parent-Lookups, z.B. Sternscheibe)
     disc_spin_by_id = {}  # id -> (dir, speed) der jeweiligen Scheibe
+    zodiac_stack_index = 0  # siehe ZODIAC_FIGURE_Z_STACK_STEP: verhindert Z-Fighting zwischen Figuren
     for entry in gear_data:
         etype = entry.get("type", "gear")
         if etype == "gear":
@@ -2228,7 +2435,9 @@ def main():
                 continue
             parent_dir, parent_speed = disc_spin_by_id[parent_id]
             obj = build_zodiac_figure_object(entry, collection, fps,
-                                             parent_obj, parent_dir, parent_speed)
+                                             parent_obj, parent_dir, parent_speed,
+                                             stack_index=zodiac_stack_index)
+            zodiac_stack_index += 1
             created.append(obj)
 
     print(f"[Messingzahnraeder] {len(created)} Objekte erzeugt in Collection '{COLLECTION_NAME}'.")
@@ -2247,6 +2456,10 @@ def main():
     # das sieht dann so aus, als waeren die Sternbilder "verschoben", obwohl
     # die Werte in GEAR_DATA korrekt sind.
     scene.frame_set(1)
+
+    # CAD-Standardansicht (Kamera + ggf. Licht + Viewport-Default) - siehe
+    # build_isometric_default_view() weiter oben.
+    build_isometric_default_view(created)
 
 
 if __name__ == "__main__":
